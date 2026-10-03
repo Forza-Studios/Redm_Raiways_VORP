@@ -16,3 +16,11 @@ Config.Train = {
 
 -- true = stop Rockstar ambient trains so only this one runs
 Config.DisableRandomTrains = true
+
+-- Live moving blip that follows the train on the map / minimap
+Config.Blip = {
+    name = "Passenger Train",
+    blipHash = 1664425300,
+    sprite = -250506368, -- train icon
+    scale = 1.0,
+}
