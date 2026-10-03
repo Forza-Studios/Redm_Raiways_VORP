@@ -18,7 +18,7 @@ Config.UsePassengersTram = true
 Config.UseChristmasTrainEast = false -- Spawns a christmas train with decorations
 Config.UseChristmasTrainWest = false
 
-Config.UseFancyTrainEast = true      -- Spawns a fancy train with fancy cabins (forces train hash)
+Config.UseFancyTrainEast = false     -- Spawns a fancy train with fancy cabins (forces train hash)
 Config.UseFancyTrainWest = false
 
 Config.EastTrainDirection = false    -- set to true to have it go the other way
@@ -28,8 +28,15 @@ Config.UseTrainBlips = true
 Config.TrainBlipNameEast = "BGS East Line"
 Config.TrainBlipNameWest = "BGS West Line"
 
-Config.EastTrain = 0xCD2C7CA1   -- List can be found at https://alloc8or.re/rdr3/doc/enums/eTrainConfig.txt
-Config.WestTrain = 0xCD2C7CA1
+-- Coach count is FIXED per train hash (can't set 5 -> 10 via a number).
+-- 0xCD2C7CA1 = short passenger (engine + ~5 coaches).
+-- Long passenger options (pick one, restart, /train_wagons to verify):
+-- 0x10461E19 = long passenger (recommended, no armed guards)
+-- 0x1EEC5C2A = extra-long passenger
+-- 0x3ADC4DA9 = sleeper + passengers + guards
+-- 0x5AA369CA = XXXXL but spawns armed guards (gunslinger4)
+Config.EastTrain = 0x10461E19   -- List can be found at https://alloc8or.re/rdr3/doc/enums/eTrainConfig.txt
+Config.WestTrain = 0x10461E19
 Config.Trolley = 0xBF69518F     --trolley_config = 0xBF69518F
                                 --trolley_config2 = 0x09B679D6
 
