@@ -9,13 +9,13 @@ Config.Spawn = vector4(2727.1458, -1448.65, 45.7874, 295.0960)
 
 Config.Train = {
     model = 0xCD2C7CA1, -- passenger consist (engine + coaches)
-    direction = true,    -- if it drives the wrong way, flip to false
+    direction = false,   -- flipped: runs opposite way along track
     cruiseSpeed = 15.0,
     maxSpeed = 15.0,
 }
 
 -- true = stop Rockstar ambient trains so only this one runs
-Config.DisableRandomTrains = true
+Config.DisableRandomTrains = false
 
 -- Live moving blip that follows the train on the map / minimap
 Config.Blip = {
