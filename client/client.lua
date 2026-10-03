@@ -672,17 +672,3 @@ CreateThread(function()
 end)
 
 SpawnTrains()
-
--- Debug: prints wagon (coach) count for current + candidate hashes.
--- Count includes engine, so 11 = engine + 10 coaches.
-RegisterCommand("train_wagons", function()
-    local function count(hash)
-        return N_0x635423d55ca84fc8(hash)
-    end
-    print(("[trains] East 0x%X = %d wagons"):format(Config.EastTrain, count(Config.EastTrain)))
-    print(("[trains] West 0x%X = %d wagons"):format(Config.WestTrain, count(Config.WestTrain)))
-    print(("[trains] 0xCD2C7CA1 = %d wagons"):format(count(0xCD2C7CA1)))
-    print(("[trains] 0x10461E19 = %d wagons"):format(count(0x10461E19)))
-    print(("[trains] 0x1EEC5C2A = %d wagons"):format(count(0x1EEC5C2A)))
-    print(("[trains] 0x3ADC4DA9 = %d wagons"):format(count(0x3ADC4DA9)))
-end, false)
