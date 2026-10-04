@@ -57,9 +57,9 @@ RegisterServerEvent("BGS_Trains:server:AllPlayersGetTrainsFromServer", function 
 	end
 end)
 
-RegisterServerEvent("BGS_Trains:server:ResetTrainBlip", function (train)
+RegisterServerEvent("BGS_Trains:server:ResetTrainBlip", function (trainArea)
 	for index, player in ipairs(players) do
-		TriggerClientEvent("BGS_Trains:client:RenderTrainBlip", player, train)
+		TriggerClientEvent("BGS_Trains:client:RenderTrainBlip", player, trainArea)
 	end
 end)
 

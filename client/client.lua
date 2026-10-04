@@ -267,10 +267,20 @@ local function HandleFancyTrain(train)
 
 		while true do
 			Wait(1000)
+			if not train or train == 0 or not DoesEntityExist(train) then
+				goto next_fancy_check
+			end
 			local carriage = Citizen.InvokeNative(0xD0FB093A4CDB932C, train, 3)
 			local carriage2 = Citizen.InvokeNative(0xD0FB093A4CDB932C, train, 4)
 			local carriage3 = Citizen.InvokeNative(0xD0FB093A4CDB932C, train, 6)
 			local carriage4 = Citizen.InvokeNative(0xD0FB093A4CDB932C, train, 5)
+			-- All four cabins must exist: touching a missing carriage strips/
+			-- breaks the consist (this is how you end up with engine-only).
+			if carriage == 0 or carriage2 == 0 or carriage3 == 0 or carriage4 == 0
+				or not DoesEntityExist(carriage) or not DoesEntityExist(carriage2)
+				or not DoesEntityExist(carriage3) or not DoesEntityExist(carriage4) then
+				goto next_fancy_check
+			end
 			if #(GetEntityCoords(PlayerPedId()) - GetEntityCoords(carriage4)) < 150 and (not barCreated or not sleepersCreated) then
 				if not barCreated or not sleepersCreated then
 					if not barCreated then
@@ -283,31 +293,82 @@ local function HandleFancyTrain(train)
 					UnlockCabinDoors(carriage4)
 				end
 			end
+			::next_fancy_check::
 		end
 	end)
 end
 
--- Render train blips after values are retrieved from server
-local function RenderTrainBlip(train)
-	if Config.UseTrainBlips then
-		local TrainBlip
-		if train then
-			if IsThisModelATrain(GetEntityModel(train)) then
-				TrainBlip = Citizen.InvokeNative(0x23F74C2FDA6E7C61, 1664425300, train)
-				SetBlipSprite(TrainBlip, -250506368)
-				if train == eastTrain then
-					Citizen.InvokeNative(0x9CB1A1623062F402, TrainBlip, Config.TrainBlipNameEast)
-				elseif train == westTrain then
-					Citizen.InvokeNative(0x9CB1A1623062F402, TrainBlip, Config.TrainBlipNameWest)
-				end
-				SetBlipScale(TrainBlip, 1.0)
-			end
-		end
+-- Render train blips after values are retrieved from server.
+-- Blip handles are stored per line so re-renders replace instead of stacking,
+-- and a lost blip can be rebuilt from the local train entity.
+local eastBlip, westBlip, tramBlip = nil, nil, nil
+
+local function RenderTrainBlip(train, area)
+	if not Config.UseTrainBlips then return end
+	if not train or train == 0 or not DoesEntityExist(train) then return end
+	if not IsThisModelATrain(GetEntityModel(train)) then return end
+	-- Drop the previous blip for this line (stale after respawns)
+	if area == "east" then
+		if eastBlip and DoesBlipExist(eastBlip) then RemoveBlip(eastBlip) end
+		eastBlip = nil
+	elseif area == "west" then
+		if westBlip and DoesBlipExist(westBlip) then RemoveBlip(westBlip) end
+		westBlip = nil
+	else
+		if tramBlip and DoesBlipExist(tramBlip) then RemoveBlip(tramBlip) end
+		tramBlip = nil
 	end
+	local TrainBlip = Citizen.InvokeNative(0x23F74C2FDA6E7C61, 1664425300, train)
+	if not TrainBlip or TrainBlip == 0 then return end
+	SetBlipSprite(TrainBlip, -250506368)
+	if area == "east" then
+		Citizen.InvokeNative(0x9CB1A1623062F402, TrainBlip, Config.TrainBlipNameEast)
+		eastBlip = TrainBlip
+	elseif area == "west" then
+		Citizen.InvokeNative(0x9CB1A1623062F402, TrainBlip, Config.TrainBlipNameWest)
+		westBlip = TrainBlip
+	else
+		tramBlip = TrainBlip
+	end
+	SetBlipScale(TrainBlip, 1.0)
 end
 
-RegisterNetEvent("BGS_Trains:client:RenderTrainBlip", function (train)
-	RenderTrainBlip(train)
+-- Server broadcasts a line name (never an entity handle: handles are
+-- per-client and meaningless on other machines). Rebuild from OUR entity.
+RegisterNetEvent("BGS_Trains:client:RenderTrainBlip", function (trainArea)
+	if trainArea == "east" and eastTrain and eastTrain ~= 0 then
+		RenderTrainBlip(eastTrain, "east")
+	elseif trainArea == "west" and westTrain and westTrain ~= 0 then
+		RenderTrainBlip(westTrain, "west")
+	elseif trainArea == "tram" and tram and tram ~= 0 then
+		RenderTrainBlip(tram, "tram")
+	end
+end)
+
+-- Watchdog: if a line has a live train but its blip is gone (scope loss,
+-- respawn race, missed event), rebuild it. This is what fixes
+-- "some players don't see the blip".
+CreateThread(function()
+	while true do
+		Wait(30000)
+		if not Config.UseTrainBlips then goto next_blip_check end
+		if Config.UseEastTrain and eastTrain and eastTrain ~= 0 and DoesEntityExist(eastTrain) then
+			if not eastBlip or not DoesBlipExist(eastBlip) then
+				RenderTrainBlip(eastTrain, "east")
+			end
+		end
+		if Config.UseWestTrain and westTrain and westTrain ~= 0 and DoesEntityExist(westTrain) then
+			if not westBlip or not DoesBlipExist(westBlip) then
+				RenderTrainBlip(westTrain, "west")
+			end
+		end
+		if Config.UseTram and tram and tram ~= 0 and DoesEntityExist(tram) then
+			if not tramBlip or not DoesBlipExist(tramBlip) then
+				RenderTrainBlip(tram, "tram")
+			end
+		end
+		::next_blip_check::
+	end
 end)
 
 -- Create train and tram vehicles, network and store server side
@@ -321,8 +382,13 @@ local function TrainCreateVehicle(trainModel, location, trainArea, direction)
 			for i = 0, trainWagons - 1 do
 				local trainWagonModel = N_0x8df5f6a19f99f0d5(trainModel, i)
 				RequestModel(trainWagonModel)
-				while not HasModelLoaded(trainWagonModel) do
-					Citizen.Wait(0)
+				local loadWait = 0
+				while not HasModelLoaded(trainWagonModel) and loadWait < 10000 do
+					Citizen.Wait(50)
+					loadWait = loadWait + 50
+				end
+				if not HasModelLoaded(trainWagonModel) then
+					print(("[coi_railway] wagon model failed to load for %s index %d - consist may spawn engine-only"):format(tostring(trainModel), i))
 				end
 			end
 
@@ -360,6 +426,10 @@ local function TrainCreateVehicle(trainModel, location, trainArea, direction)
 					SetNetworkIdExistsOnAllMachines(NetworkGetNetworkIdFromEntity(trainVeh), true)
 					SetNetworkIdExistsOnAllMachines(NetworkGetNetworkIdFromEntity(trainDriverHandle), true)
 					TriggerServerEvent("BGS_Trains:server:StoreNetIndex", NetworkGetNetworkIdFromEntity(trainVeh), NetworkGetNetworkIdFromEntity(trainDriverHandle), trainArea)
+					local spawnedWagons = N_0x635423d55ca84fc8(trainModel)
+					for i = 0, spawnedWagons - 1 do
+						SetModelAsNoLongerNeeded(N_0x8df5f6a19f99f0d5(trainModel, i))
+					end
 					return
 				end
 			end
@@ -369,14 +439,24 @@ end
 
 -- Prevent people from knocking driver out of train
 local function ProtectTrainDriver(trainDriverHandle)
-	if trainDriverHandle then
-		print("protecting train driver")
+	if trainDriverHandle and trainDriverHandle ~= 0 and DoesEntityExist(trainDriverHandle) then
 		SetPedCanBeKnockedOffVehicle(trainDriverHandle, 1)
 		SetEntityInvincible(trainDriverHandle, true)
 		Citizen.InvokeNative(0x9F8AA94D6D97DBF4, trainDriverHandle, true)
 		SetEntityAsMissionEntity(trainDriverHandle, true, true)
 		SetEntityCanBeDamaged(trainDriverHandle, false)
 	end
+end
+
+-- Safe netID -> entity: waits briefly for replication, returns 0 when unknown.
+-- Calling NetworkGetEntityFromNetworkId on a missing ID is what spams
+-- "GetNetworkObject: no object by ID" in the console.
+local function NetToEntity(netId)
+	if not netId or netId == 0 then return 0 end
+	if not NetworkDoesNetworkIdExist(netId) then return 0 end
+	local ent = NetworkGetEntityFromNetworkId(netId)
+	if not ent or ent == 0 or not DoesEntityExist(ent) then return 0 end
+	return ent
 end
 
 local function SpawnTrains()
@@ -434,37 +514,49 @@ RegisterNetEvent("BGS_Trains:client:GetTrainsFromServer", function (eastNet, wes
 	if Config.UseEastTrain then
 		spawnedEast = false
 		if eastNet then
-			eastTrain = NetworkGetEntityFromNetworkId(eastNet)
-			eastConductor = NetworkGetEntityFromNetworkId(eastConductorNet)
-			ProtectTrainDriver(eastConductor)
-			spawnedEast = true
-			RenderTrainBlip(eastTrain)
-			Citizen.InvokeNative(0xA670B3662FAFFBD0, eastNet)
-			Citizen.InvokeNative(0xA670B3662FAFFBD0, eastConductorNet)
+			eastTrain = NetToEntity(eastNet)
+			eastConductor = NetToEntity(eastConductorNet)
+			if eastTrain ~= 0 then
+				ProtectTrainDriver(eastConductor)
+				spawnedEast = true
+				RenderTrainBlip(eastTrain, "east")
+				Citizen.InvokeNative(0xA670B3662FAFFBD0, eastNet)
+				if eastConductor ~= 0 then
+					Citizen.InvokeNative(0xA670B3662FAFFBD0, eastConductorNet)
+				end
+			end
 		end
 	end
 	if Config.UseWestTrain then
 		spawnedWest = false
 		if westNet then
-			westTrain = NetworkGetEntityFromNetworkId(westNet)
-			westConductor = NetworkGetEntityFromNetworkId(westConductorNet)
-			ProtectTrainDriver(westConductor)
-			spawnedWest = true
-			RenderTrainBlip(westTrain)
-			Citizen.InvokeNative(0xA670B3662FAFFBD0, westNet)
-			Citizen.InvokeNative(0xA670B3662FAFFBD0, westConductorNet)
+			westTrain = NetToEntity(westNet)
+			westConductor = NetToEntity(westConductorNet)
+			if westTrain ~= 0 then
+				ProtectTrainDriver(westConductor)
+				spawnedWest = true
+				RenderTrainBlip(westTrain, "west")
+				Citizen.InvokeNative(0xA670B3662FAFFBD0, westNet)
+				if westConductor ~= 0 then
+					Citizen.InvokeNative(0xA670B3662FAFFBD0, westConductorNet)
+				end
+			end
 		end
 	end
 	if Config.UseTram then
 		spawnedTram = false
 		if tramNet then
-			tram = NetworkGetEntityFromNetworkId(tramNet)
-			tramConductor = NetworkGetEntityFromNetworkId(tramConductorNet)
-			FreezeEntityPosition(tramConductor, true)
-			ProtectTrainDriver(tramConductor)
-			spawnedTram = true
-			Citizen.InvokeNative(0xA670B3662FAFFBD0, tramNet)
-			Citizen.InvokeNative(0xA670B3662FAFFBD0, tramConductorNet)
+			tram = NetToEntity(tramNet)
+			tramConductor = NetToEntity(tramConductorNet)
+			if tram ~= 0 then
+				if tramConductor ~= 0 then
+					FreezeEntityPosition(tramConductor, true)
+					ProtectTrainDriver(tramConductor)
+					Citizen.InvokeNative(0xA670B3662FAFFBD0, tramConductorNet)
+				end
+				spawnedTram = true
+				Citizen.InvokeNative(0xA670B3662FAFFBD0, tramNet)
+			end
 		end
 	end
 
@@ -498,7 +590,7 @@ RegisterNetEvent("BGS_Trains:client:ResetTrain", function (trainArea)
 		Wait(2500)
 		TriggerServerEvent("BGS_Trains:server:AllPlayersGetTrainsFromServer")
 		Wait(2500)
-		TriggerServerEvent("BGS_Trains:server:ResetTrainBlip", eastTrain)
+		TriggerServerEvent("BGS_Trains:server:ResetTrainBlip", "east")
 	elseif trainArea == "west" then
 		if Config.UseChristmasTrainWest then
 			TrainCreateVehicle(christmasTrainHash, Config.WestTrainSpawnLocation, "west", Config.WestTrainDirection)
@@ -510,7 +602,7 @@ RegisterNetEvent("BGS_Trains:client:ResetTrain", function (trainArea)
 		Wait(2500)
 		TriggerServerEvent("BGS_Trains:server:AllPlayersGetTrainsFromServer")
 		Wait(2500)
-		TriggerServerEvent("BGS_Trains:server:ResetTrainBlip", westTrain)
+		TriggerServerEvent("BGS_Trains:server:ResetTrainBlip", "west")
 	end
 end)
 
@@ -647,8 +739,8 @@ CreateThread(function()
 		return
 	end
 	while true do
-		Wait(0)
-		if westConductor and Config.ProtectTrainDrivers then
+		Wait(500)
+		if westConductor and westConductor ~= 0 and DoesEntityExist(westConductor) and Config.ProtectTrainDrivers then
 			if #(GetEntityCoords(westConductor) - GetEntityCoords(PlayerPedId())) < 20.0 then
 				Citizen.InvokeNative(0xFC094EF26DD153FA, 12)
 			end
@@ -662,8 +754,8 @@ CreateThread(function()
 		return
 	end
 	while true do
-		Wait(0)
-		if eastConductor and Config.ProtectTrainDrivers then
+		Wait(500)
+		if eastConductor and eastConductor ~= 0 and DoesEntityExist(eastConductor) and Config.ProtectTrainDrivers then
 			if #(GetEntityCoords(eastConductor) - GetEntityCoords(PlayerPedId())) < 20.0 then
 				Citizen.InvokeNative(0xFC094EF26DD153FA, 12)
 			end
@@ -672,3 +764,31 @@ CreateThread(function()
 end)
 
 SpawnTrains()
+
+-- Diagnostic: compares expected consist size vs carriages that actually exist.
+-- /train_cars -> F8 console: "east: config 6 wagons, 6 present" etc.
+-- If present < config, wagons failed at spawn (model/stream).
+-- If present == config but you only SEE the engine, something stripped them
+-- afterwards (fancy interiors, despawn clash) or they're out of scope.
+RegisterCommand("train_cars", function()
+	local function report(name, train, model)
+		if not train or train == 0 or not DoesEntityExist(train) then
+			print(("[coi_railway] %s: no train entity"):format(name))
+			return
+		end
+		local expected = N_0x635423d55ca84fc8(model)
+		local present = 0
+		for i = 0, expected + 2 do
+			local car = Citizen.InvokeNative(0xD0FB093A4CDB932C, train, i)
+			if car and car ~= 0 and DoesEntityExist(car) then
+				present = present + 1
+			else
+				break
+			end
+		end
+		print(("[coi_railway] %s: config %d wagons, %d carriages present"):format(name, expected, present))
+	end
+	report("east", eastTrain, Config.UseFancyTrainEast and 0xCD2C7CA1 or Config.EastTrain)
+	report("west", westTrain, Config.UseFancyTrainWest and 0xCD2C7CA1 or Config.WestTrain)
+	report("tram", tram, Config.Trolley)
+end, false)
