@@ -426,6 +426,11 @@ local function TrainCreateVehicle(trainModel, location, trainArea, direction)
 					SetNetworkIdExistsOnAllMachines(NetworkGetNetworkIdFromEntity(trainVeh), true)
 					SetNetworkIdExistsOnAllMachines(NetworkGetNetworkIdFromEntity(trainDriverHandle), true)
 					TriggerServerEvent("BGS_Trains:server:StoreNetIndex", NetworkGetNetworkIdFromEntity(trainVeh), NetworkGetNetworkIdFromEntity(trainDriverHandle), trainArea)
+					if not Config.AllowTrainDrive then
+						SetVehicleDoorsLocked(trainVeh, 4)
+						SetVehicleDoorsLockedForAllPlayers(trainVeh, true)
+						pcall(SetPedCanBeDraggedOut, trainDriverHandle, false)
+					end
 					local spawnedWagons = N_0x635423d55ca84fc8(trainModel)
 					for i = 0, spawnedWagons - 1 do
 						SetModelAsNoLongerNeeded(N_0x8df5f6a19f99f0d5(trainModel, i))
@@ -760,6 +765,36 @@ CreateThread(function()
 				Citizen.InvokeNative(0xFC094EF26DD153FA, 12)
 			end
 		end
+	end
+end)
+
+-- Anti-hijack: when driving is disabled, keep doors locked, kick anyone out
+-- of the driver seat (-1) and block enter/drive inputs near the train.
+-- Passengers can still climb aboard and ride.
+CreateThread(function()
+	if Config.AllowTrainDrive then
+		return
+	end
+	local function lockTrain(train)
+		if not train or train == 0 or not DoesEntityExist(train) then return end
+		SetVehicleDoorsLocked(train, 4)
+		SetVehicleDoorsLockedForAllPlayers(train, true)
+		local playerPed = PlayerPedId()
+		if GetPedInVehicleSeat(train, -1) == playerPed then
+			ClearPedTasksImmediately(playerPed)
+			TaskLeaveVehicle(playerPed, train, 16)
+		end
+		if #(GetEntityCoords(playerPed) - GetEntityCoords(train)) < 7.0 then
+			DisableControlAction(0, 0xD9D0E1C0, true) -- INPUT_VEH_ENTER
+			DisableControlAction(0, 0xCEEA424B, true) -- INPUT_VEH_DRIVE
+			DisableControlAction(0, 0x7F8D09B8, true) -- INPUT_ENTER
+		end
+	end
+	while true do
+		Wait(0)
+		lockTrain(eastTrain)
+		lockTrain(westTrain)
+		lockTrain(tram)
 	end
 end)
 

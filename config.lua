@@ -38,6 +38,10 @@ Config.TrainDespawnTimer = 10   -- time to despawn stuck/abandoned trains (in mi
 
 Config.ProtectTrainDrivers = true -- SHOULD protect the train driver from being kicked out if set to true (let me know if it doesn't)
 
+-- false = players can ride but can never drive/hijack the trains (recommended)
+-- true = players can climb in and drive them
+Config.AllowTrainDrive = false
+
 Config.UseManualJunctions = true  -- Whether or not to use manual train junction track switches
 
 Config.RouteOneTramSwitches = {
