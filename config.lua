@@ -1,4 +1,22 @@
+--       ___          ___          ___     
+--      /\  \        /\  \        /\  \    
+--     /::\  \      /::\  \      /::\  \   
+--    /:/\:\  \    /:/\:\  \    /:/\ \  \  
+--   /::\~\:\__\  /:/  \:\  \  _\:\~\ \  \ 
+--  /:/\:\ \:|__|/:/__/_\:\__\/\ \:\ \ \__\
+--  \:\~\:\/:/  /\:\  /\ \/__/\:\ \:\ \/__/
+--   \:\ \::/  /  \:\ \:\__\   \:\ \:\__\  
+--    \:\/:/  /    \:\/:/  /    \:\/:/  /  
+--     \::/__/      \::/  /      \::/  /   
+--      ‾‾           \/__/        \/__/    
 
+-- BGS Trains
+-- Author: Snapopotamus
+-- © 2024
+-- An ambient train system for RedM servers.
+-- Compatible with RSGCore and VORPCore.
+
+---------------------------------------------------------------------------------------------
 
 Config = {}
 
@@ -37,10 +55,6 @@ Config.StationWaitTime = 60     -- time that trains wait at a station (in second
 Config.TrainDespawnTimer = 10   -- time to despawn stuck/abandoned trains (in minutes)
 
 Config.ProtectTrainDrivers = true -- SHOULD protect the train driver from being kicked out if set to true (let me know if it doesn't)
-
--- false = players can ride but can never drive/hijack the trains (recommended)
--- true = players can climb in and drive them
-Config.AllowTrainDrive = false
 
 Config.UseManualJunctions = true  -- Whether or not to use manual train junction track switches
 
