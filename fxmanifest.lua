@@ -1,24 +1,6 @@
---       ___          ___          ___     
---      /\  \        /\  \        /\  \    
---     /::\  \      /::\  \      /::\  \   
---    /:/\:\  \    /:/\:\  \    /:/\ \  \  
---   /::\~\:\__\  /:/  \:\  \  _\:\~\ \  \ 
---  /:/\:\ \:|__|/:/__/_\:\__\/\ \:\ \ \__\
---  \:\~\:\/:/  /\:\  /\ \/__/\:\ \:\ \/__/
---   \:\ \::/  /  \:\ \:\__\   \:\ \:\__\  
---    \:\/:/  /    \:\/:/  /    \:\/:/  /  
---     \::/__/      \::/  /      \::/  /   
---      ‾‾           \/__/        \/__/    
 
--- BGS Trains
--- Author: Snapopotamus
--- © 2024
--- An ambient train system for RedM servers.
--- Compatible with RSGCore and VORPCore.
 
----------------------------------------------------------------------------------------------
-
-author 'Snapopotamus'
+author '_forza'
 fx_version 'cerulean'
 game 'rdr3'
 rdr3_warning 'I acknowledge that this is a prerelease build of RedM, and I am aware my resources *will* become incompatible once RedM ships.'
