@@ -91,9 +91,23 @@ Citizen.CreateThread(function()
 	end
 end)
 
+function DeleteCurrentTrain()
+	if CURRENT_TRAIN and DoesEntityExist(CURRENT_TRAIN) then
+		DeleteEntity(CURRENT_TRAIN)
+	end
+	CURRENT_TRAIN = nil
+	trainspawned = false
+	trainrunning = false
+end
+
 function TrainMenu()
 	MenuData.CloseAll()
-	local elements = Config.Elements
+	local elements = {}
+	for _, e in ipairs(Config.Elements) do
+		elements[#elements + 1] = e
+	end
+	-- always offer a stop/delete entry so you can remove the current train and spawn the next one
+	elements[#elements + 1] = { label = "DELETE current train", value = 'delete', desc = "stop + delete train to spawn next" }
 
 	MenuData.Open('default', GetCurrentResourceName(), 'railway_main',
 		{
@@ -104,7 +118,11 @@ function TrainMenu()
 		},
 
 			function(data, menu)
-			if (data.current.value == 'hash1') then
+			if (data.current.value == 'delete') then
+				DeleteCurrentTrain()
+				menu.close()
+				TriggerEvent("vorp:TipRight", "train deleted, you can spawn next!", 3000)
+			elseif (data.current.value == 'hash1') then
 				StartTrain(data.current.info)
 			elseif (data.current.value == 'hash2') then
 				StartTrain(data.current.info)
@@ -274,18 +292,16 @@ end)
 -- delete train
 RegisterCommand('deletetrain', function()
 	if PlayerJob == Config.Job then
-		DeleteEntity(CURRENT_TRAIN)
-		trainspawned = false
-		trainrunning = false
+		DeleteCurrentTrain()
+	else
+		TriggerEvent("vorp:TipRight", "no permission / open train menu first!", 3000)
 	end
 end)
 
 -- reset train
 RegisterCommand('resettrain', function()
 	if PlayerJob == Config.Job then
-		DeleteEntity(CURRENT_TRAIN)
-		trainspawned = false
-		trainrunning = false
+		DeleteCurrentTrain()
 		DoScreenFadeOut(500)
 		Wait(1000)
 		Citizen.InvokeNative(0x203BEFFDBE12E96A, PlayerPedId(), -163.1477, 637.15832, 114.03209 - 1, 337.03866) --tp back to valentine
