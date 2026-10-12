@@ -7,6 +7,7 @@ Config = {}
 -- replace only the hash number
 Config = {
 	Job = "police", -- the only job to open train menu
+	AllowDriving = false, -- false = passengers only, driver seat locked (like coi_train_rob)
 	trainmodel1 = 987516329,
 	trainmodel2 = 0x515E31ED,
 	trainmodel3 = 0x487B2BE7,

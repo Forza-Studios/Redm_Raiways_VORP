@@ -175,6 +175,11 @@ function StartTrain(hash)
 		CURRENT_TRAIN = train
 		trainspawned = true
 		trainrunning = true
+		-- Lock driver seat when driving is disabled in config
+		if Config.AllowDriving == false then
+			SetVehicleDoorsLocked(train, 4)
+			SetVehicleDoorsLockedForAllPlayers(train, true)
+		end
 	else
 		TriggerEvent("vorp:TipRight", "train is already out, check map!", 3000)
 	end
@@ -219,6 +224,32 @@ RegisterNetEvent("send:PlayerJob")
 AddEventHandler("send:PlayerJob", function(Job)
 	PlayerJob = Job
 
+end)
+-- Protect driver seat when Config.AllowDriving == false (same pattern as coi_train_rob)
+Citizen.CreateThread(function()
+	while true do
+		Wait(0)
+		if Config.AllowDriving == false and trainspawned and CURRENT_TRAIN and DoesEntityExist(CURRENT_TRAIN) then
+			local playerPed = PlayerPedId()
+			-- keep locked for all players
+			SetVehicleDoorsLocked(CURRENT_TRAIN, 4)
+			SetVehicleDoorsLockedForAllPlayers(CURRENT_TRAIN, true)
+			-- kick out of driver seat (-1) immediately, passengers still allowed
+			if GetPedInVehicleSeat(CURRENT_TRAIN, -1) == playerPed then
+				ClearPedTasksImmediately(playerPed)
+				TaskLeaveVehicle(playerPed, CURRENT_TRAIN, 16)
+			end
+			-- block enter/drive prompts near the locomotive cab
+			local tCoords = GetEntityCoords(CURRENT_TRAIN)
+			if #(GetEntityCoords(playerPed) - tCoords) < 7.0 then
+				DisableControlAction(0, 0xD9D0E1C0, true) -- INPUT_VEH_ENTER
+				DisableControlAction(0, 0xCEEA424B, true) -- INPUT_VEH_DRIVE
+				DisableControlAction(0, 0x7F8D09B8, true) -- INPUT_ENTER
+			end
+		else
+			Wait(1000)
+		end
+	end
 end)
 -- delete all
 AddEventHandler("onResourceStop", function(resourceName)
