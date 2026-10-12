@@ -122,33 +122,8 @@ function TrainMenu()
 				DeleteCurrentTrain()
 				menu.close()
 				TriggerEvent("vorp:TipRight", "train deleted, you can spawn next!", 3000)
-			elseif (data.current.value == 'hash1') then
-				StartTrain(data.current.info)
-			elseif (data.current.value == 'hash2') then
-				StartTrain(data.current.info)
-			elseif (data.current.value == 'hash3') then
-				StartTrain(data.current.info)
-			elseif (data.current.value == 'hash4') then
-				StartTrain(data.current.info)
-			elseif (data.current.value == 'hash5') then
-				StartTrain(data.current.info)
-			elseif (data.current.value == 'hash6') then
-				StartTrain(data.current.info)
-			elseif (data.current.value == 'hash7') then
-				StartTrain(data.current.info)
-			elseif (data.current.value == 'hash8') then
-				StartTrain(data.current.info)
-			elseif (data.current.value == 'hash9') then
-				StartTrain(data.current.info)
-			elseif (data.current.value == 'hash10') then
-				StartTrain(data.current.info)
-			elseif (data.current.value == 'hash11') then
-				StartTrain(data.current.info)
-			elseif (data.current.value == 'hash12') then
-				StartTrain(data.current.info)
-			elseif (data.current.value == 'hash13') then
-				StartTrain(data.current.info)
-			elseif (data.current.value == 'hash14') then
+			elseif data.current.info then
+				-- generic: works for any number of trains (train_X, exp, legacy hashX)
 				StartTrain(data.current.info)
 			end
 		
