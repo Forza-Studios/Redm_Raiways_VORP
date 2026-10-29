@@ -1,4 +1,4 @@
-# BGS_Trains
+
 An ambient train script for RedM servers.
 
 This script is a resurrection of ts_trains, rebuilt in lua.

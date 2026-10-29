@@ -40,7 +40,7 @@ Config.TrainPassengers = true
 Config.UseChristmasTrainEast = false -- Spawns a christmas train with decorations
 Config.UseChristmasTrainWest = false
 
-Config.UseFancyTrainEast = true      -- Spawns a fancy train with fancy cabins (forces train hash)
+Config.UseFancyTrainEast = false     -- Spawns a fancy train with fancy cabins (forces train hash)
 Config.UseFancyTrainWest = false
 
 Config.EastTrainDirection = false    -- set to true to have it go the other way
@@ -51,8 +51,8 @@ Config.TrainBlipNameEast = "East Line"
 Config.TrainBlipNameWest = "West Line"
 Config.TrainBlipNameTram = "Tram"
 
-Config.EastTrain = 0xCD2C7CA1   -- List can be found at https://alloc8or.re/rdr3/doc/enums/eTrainConfig.txt
-Config.WestTrain = 0xCD2C7CA1
+Config.EastTrain = 0x8864D73A   -- passenger train that spawns with NPC passengers (s&e/central pass 9); List can be found at https://alloc8or.re/rdr3/doc/enums/eTrainConfig.txt
+Config.WestTrain = 0x4C9CCB22   -- passenger train that spawns with NPC passengers (central pass 9)
 Config.Trolley = 0xBF69518F     --trolley_config = 0xBF69518F
                                 --trolley_config2 = 0x09B679D6
 
