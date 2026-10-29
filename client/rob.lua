@@ -56,18 +56,46 @@ local function findTarget(playerPed, coords)
 	return best
 end
 
--- scared reaction: cower + a line of dialog shown on screen
+-- Real voice: the passenger screams / begs for help. Lines come from Config.Rob.SpeechLines
+-- (names taken from the RDR2 speech-line database). A line is only used if the ped reports it can say it.
+local function sayLine(ped)
+	local lines = Config.Rob.SpeechLines
+	local order = {}
+	for i = 1, #lines do order[i] = lines[i] end
+	for i = #order, 2, -1 do
+		local k = math.random(i)
+		order[i], order[k] = order[k], order[i]
+	end
+	local fallback = order[1]
+	for _, line in ipairs(order) do
+		-- 0x9D6DEC9791A4E501: can this ped say this speech line?
+		local can = Citizen.InvokeNative(0x9D6DEC9791A4E501, ped, line, 0, 1, Citizen.ResultAsInteger())
+		if can and can ~= 0 then
+			fallback = line
+			break
+		end
+	end
+	if not fallback then return end
+	-- PLAY_PED_AMBIENT_SPEECH_NATIVE(ped, speechName, speechParam): both are strings (citizenfx/natives)
+	PlayPedAmbientSpeechNative(ped, fallback, Config.Rob.SpeechParam)
+	if Config.Rob.Debug then
+		print(("[coi_railway] passenger %d says %s"):format(ped, fallback))
+	end
+end
+
+-- scared reaction: cower + scream / plead for help
 local function scarePassenger(ped)
 	if not DoesEntityExist(ped) then return end
-	local scenario = joaat(Config.Rob.ScareScenario)
-	TaskStartScenarioInPlace(ped, scenario, -1, true, false, false, false)
-	if Config.Rob.SpeechLines and #Config.Rob.SpeechLines > 0 and Config.Rob.SpeechVoice then
-		-- optional audio line, only used when you fill Config.Rob.SpeechLines / SpeechVoice
-		local line = Config.Rob.SpeechLines[math.random(#Config.Rob.SpeechLines)]
-		PlayPedAmbientSpeechNative(ped, line, Config.Rob.SpeechVoice, "SPEECH_PARAMS_FORCE", 0, 0)
-	end
-	local text = Config.Rob.ScaredLines[math.random(#Config.Rob.ScaredLines)]
-	TriggerEvent("vorp:TipRight", text, 3500)
+	TaskStartScenarioInPlace(ped, joaat(Config.Rob.ScareScenario), -1, true, false, false, false)
+	sayLine(ped)
+	-- keep begging a couple of times while the ped is cowering
+	CreateThread(function ()
+		for _ = 1, Config.Rob.RepeatLines do
+			Wait(Config.Rob.RepeatDelay)
+			if not DoesEntityExist(ped) or IsPedDeadOrDying(ped, true) then return end
+			sayLine(ped)
+		end
+	end)
 end
 
 CreateThread(function ()
@@ -84,8 +112,9 @@ CreateThread(function ()
 				if PromptHasStandardModeCompleted(robPrompt, 0) then
 					busy = true
 					robbed[target] = true
-					scarePassenger(target)
 					TriggerServerEvent("coi_railway:server:RobPassenger", pedNetId(target))
+					local ok, err = pcall(scarePassenger, target)
+					if not ok then print(("[coi_railway] scare reaction failed: %s"):format(err)) end
 					Wait(Config.Rob.Cooldown)
 					busy = false
 				end

@@ -160,16 +160,16 @@ Config.Rob = {
     PromptText = "Rob",
     GroupText = "Passenger",
     ScareScenario = "CODE_HUMAN_STAND_COWER", -- scenario the robbed passenger plays (name from the knowledge brain)
-    ScaredLines = {
-        "Please, don't hurt me!",
-        "Help! Somebody help!",
-        "Take it, just take it!",
-        "I have a family, please!",
-        "Oh God, not me!",
+    -- Real voice lines (no subtitles). Names come from the RDR2 speech-line database / mission scripts.
+    -- A random line the ped can say is played when robbed, then repeated RepeatLines more times.
+    SpeechLines = {
+        "GENERIC_FRIGHTENED_HIGH", "PANIC_HELP", "SCARED_HELP", "PLEAD",
+        "INTIMIDATED_GEN", "INTIMIDATED_AGAIN_GEN",
     },
-    -- optional audio: fill both to also play a voice line (not verified, left empty on purpose)
-    SpeechLines = {},
-    SpeechVoice = nil,
+    SpeechParam = "SPEECH_PARAMS_FORCE",
+    RepeatLines = 2,
+    RepeatDelay = 3500,             -- ms between repeated lines
+    Debug = true,                   -- prints the line that was played (F8 console); set false when it works
     -- ped models counted as passengers (A_x_M_*TRAINPASSENGERS_01, from the knowledge brain)
     PassengerModels = {
         "A_M_M_LOWERTRAINPASSENGERS_01", "A_M_M_MIDDLETRAINPASSENGERS_01", "A_M_M_UPPERTRAINPASSENGERS_01",
