@@ -149,3 +149,30 @@ local function mergeJunctions(target, extra)
 end
 mergeJunctions(Config.EastJunctions, Config.ExtraEastJunctions)
 mergeJunctions(Config.WestJunctions, Config.ExtraWestJunctions)
+
+-- Rob passengers: stand next to a train passenger and press ENTER
+Config.Rob = {
+    MinMoney = 1,
+    MaxMoney = 1000,
+    Distance = 2.0,                 -- how close you must be to a passenger
+    Cooldown = 3000,                -- ms between robberies per player
+    MaxTrainDistance = 400.0,       -- server check: player must be this close to the front of a train (trains are long)
+    PromptText = "Rob",
+    GroupText = "Passenger",
+    ScareScenario = "CODE_HUMAN_STAND_COWER", -- scenario the robbed passenger plays (name from the knowledge brain)
+    ScaredLines = {
+        "Please, don't hurt me!",
+        "Help! Somebody help!",
+        "Take it, just take it!",
+        "I have a family, please!",
+        "Oh God, not me!",
+    },
+    -- optional audio: fill both to also play a voice line (not verified, left empty on purpose)
+    SpeechLines = {},
+    SpeechVoice = nil,
+    -- ped models counted as passengers (A_x_M_*TRAINPASSENGERS_01, from the knowledge brain)
+    PassengerModels = {
+        "A_M_M_LOWERTRAINPASSENGERS_01", "A_M_M_MIDDLETRAINPASSENGERS_01", "A_M_M_UPPERTRAINPASSENGERS_01",
+        "A_F_M_LOWERTRAINPASSENGERS_01", "A_F_M_MIDDLETRAINPASSENGERS_01", "A_F_M_UPPERTRAINPASSENGERS_01",
+    },
+}

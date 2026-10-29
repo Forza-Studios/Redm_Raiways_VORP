@@ -9,9 +9,11 @@ shared_scripts {
     'config.lua'
 }
 client_scripts {
-	'client/client.lua'
+	'client/client.lua',
+	'client/rob.lua'
 }
 
 server_scripts {
-	'server/server.lua'
+	'server/server.lua',
+	'server/rob.lua'
 }

@@ -233,3 +233,8 @@ CreateThread(function ()
 		end
 	end
 end)
+
+-- used by server/rob.lua
+function GetTrainNets()
+	return { eastTrain, westTrain, tram }
+end
