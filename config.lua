@@ -33,6 +33,10 @@ Config.UseTram = true
 
 Config.UsePassengersTram = true
 
+-- Native passengers inside the east/west trains. The game seats them itself (bench, chair,
+-- reading, smoking, standing...), so there is no collision and every client sees the same thing.
+Config.TrainPassengers = true
+
 Config.UseChristmasTrainEast = false -- Spawns a christmas train with decorations
 Config.UseChristmasTrainWest = false
 

@@ -366,9 +366,9 @@ local function TrainCreateVehicle(trainModel, location, trainArea, direction)
 
 			if trainModel ~= Config.Trolley then
 				if trainArea == "east" then
-					trainVeh = Citizen.InvokeNative(0xC239DBD9A57D2A71, trainModel, location, direction, false, true, true)
+					trainVeh = Citizen.InvokeNative(0xC239DBD9A57D2A71, trainModel, location, direction, Config.TrainPassengers, true, true)
 				else
-					trainVeh = Citizen.InvokeNative(0xC239DBD9A57D2A71, trainModel, location, direction, false, true, true)
+					trainVeh = Citizen.InvokeNative(0xC239DBD9A57D2A71, trainModel, location, direction, Config.TrainPassengers, true, true)
 				end
 				SetTrainSpeed(trainVeh, Config.TrainMaxSpeed)
 				SetTrainCruiseSpeed(trainVeh, Config.TrainMaxSpeed)
