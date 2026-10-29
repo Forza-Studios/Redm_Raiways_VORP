@@ -104,5 +104,40 @@ Config.WestJunctions = {
 
 -- Custom stops - simply add coords here and the trains will stop there!
 Config.CustomStops = {
-    { coords = vector3(565.44, 1707.59, 187.47)},
+    { coords = vector3(565.44, 1707.59, 187.47)},   -- Bacchus
+    { coords = vector3(487.27, 654.81, 115.57)},    -- Heartland oil
 }
+
+-- Extra junctions (track hash names + junction indexes from genosh/redm-train-junctions,
+-- coords = the split point of the junction). enabled: 0 = branch "destA", 1 = branch "destB".
+-- Each one is set so the train takes the branch that leads to the station / main line.
+-- Entries that already exist in the lists above are skipped automatically.
+local FREIGHT, TRAINS3, BRAITH, NB1 = joaat("FREIGHT_GROUP"), joaat("TRAINS3"), joaat("BRAITHWAITES2_TRACK_CONFIG"), joaat("TRAINS_NB1")
+local WEST01, WEST02 = joaat("TRAINS_OLD_WEST01"), joaat("TRAINS_OLD_WEST02")
+
+Config.ExtraEastJunctions = {
+    { coords = vector3(1690.21, 543.87, 98.39),    trainTrack = TRAINS3, junctionIndex = 1,  enabled = 1 }, -- Emerald E (Emerald dir.)
+    { coords = vector3(1530.05, 468.95, 90.21),    trainTrack = BRAITH,  junctionIndex = 1,  enabled = 1 }, -- Emerald S (Heartland dir.)
+    { coords = vector3(67.56, -373.93, 90.90),     trainTrack = FREIGHT, junctionIndex = 16, enabled = 0 }, -- Flatneck E (Flatneck dir.)
+    { coords = vector3(30.48, -31.16, 103.33),     trainTrack = TRAINS3, junctionIndex = 5,  enabled = 0 }, -- Flatneck N (Flatneck dir.)
+    { coords = vector3(612.99, 683.27, 115.32),    trainTrack = TRAINS3, junctionIndex = 3,  enabled = 1 }, -- Heartland E (station)
+    { coords = vector3(-1374.02, -139.31, 100.84), trainTrack = FREIGHT, junctionIndex = 5,  enabled = 0 }, -- Diablo Ridge N (station)
+    { coords = vector3(-1307.62, -288.93, 100.90), trainTrack = FREIGHT, junctionIndex = 4,  enabled = 1 }, -- Diablo Ridge S (station)
+    { coords = vector3(2746.95, -1436.10, 45.78),  trainTrack = NB1,     junctionIndex = 1,  enabled = 1 }, -- Saint Denis E (station)
+}
+
+Config.ExtraWestJunctions = {
+    { coords = vector3(-4849.99, -3086.08, -15.75), trainTrack = WEST02, junctionIndex = 6, enabled = 0 }, -- Benedict Pass E (Benedict dir.)
+}
+
+local function mergeJunctions(target, extra)
+    for _, e in ipairs(extra) do
+        local exists = false
+        for _, t in ipairs(target) do
+            if t.trainTrack == e.trainTrack and t.junctionIndex == e.junctionIndex then exists = true break end
+        end
+        if not exists then target[#target + 1] = e end
+    end
+end
+mergeJunctions(Config.EastJunctions, Config.ExtraEastJunctions)
+mergeJunctions(Config.WestJunctions, Config.ExtraWestJunctions)
