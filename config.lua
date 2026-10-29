@@ -1,111 +1,108 @@
---######################### edit for VORP by: outsider ########################
+--       ___          ___          ___     
+--      /\  \        /\  \        /\  \    
+--     /::\  \      /::\  \      /::\  \   
+--    /:/\:\  \    /:/\:\  \    /:/\ \  \  
+--   /::\~\:\__\  /:/  \:\  \  _\:\~\ \  \ 
+--  /:/\:\ \:|__|/:/__/_\:\__\/\ \:\ \ \__\
+--  \:\~\:\/:/  /\:\  /\ \/__/\:\ \:\ \/__/
+--   \:\ \::/  /  \:\ \:\__\   \:\ \:\__\  
+--    \:\/:/  /    \:\/:/  /    \:\/:/  /  
+--     \::/__/      \::/  /      \::/  /   
+--      ‾‾           \/__/        \/__/    
+
+-- BGS Trains
+-- Author: Snapopotamus
+-- © 2024
+-- An ambient train system for RedM servers.
+-- Compatible with RSGCore and VORPCore.
+
+---------------------------------------------------------------------------------------------
+
 Config = {}
 
--- https://alloc8or.re/rdr3/doc/enums/eTrainConfig.txt  >>>>>>>>>> full list imported below
+Config.TrainMaxSpeed = 15.0 -- Train max speed (fot used for trams)
 
--- Add new trains in Config.Trains, menu + client support any count automatically
-Config = {
-	Job = "police", -- the only job to open train menu
-	AllowDriving = false, -- false = passengers only, driver seat locked (like coi_train_rob)
-	ShowExperimental = false, -- true = also list all 70+ _0x... configs from eTrainConfig (many are broken/test, can crash)
-}
+-- Initial train spawn locations
+Config.EastTrainSpawnLocation = vec3(2590.34, -1477.24, 45.86)
+Config.WestTrainSpawnLocation = vec3(-3763.37, -2782.54, -14.43)
+Config.TramSpawnLocation =      vec3(2608.38, -1203.12, 53.16)
 
--- Full usable set from https://alloc8or.re/rdr3/doc/enums/eTrainConfig.txt
--- Named = Rockstar tested. Numeric = works but unidentified (kept from old trainmodel1-14).
-Config.Trains = {
-	{ label = "passenger long",      hash = 0x3ADC4DA9, desc = "spawn a long train" },
-	{ label = "passenger consist",   hash = 0xCD2C7CA1, desc = "stable passenger (same as train_rob)" },
-	{ label = "prisoner escort",     hash = 0x515E31ED, desc = "spawn a train" },
-	{ label = "winter4",             hash = 0x487B2BE7, desc = "spawn a train" },
-	{ label = "appleseed",           hash = 0x8EAC625C, desc = "spawn an electric train" },
-	{ label = "bountyhunter",        hash = 0xF9B038FC, desc = "spawn a train" },
-	{ label = "locomotive (engine)", hash = 0x3260CE89, desc = "spawn a locomotive" },
-	{ label = "dummy engine",        hash = 0x26509FBB, desc = "engine test shell" },
-	{ label = "ghost train",         hash = 0x0E62D710, desc = "spawn a train" },
-	{ label = "gunslinger3",         hash = 0x3D72571D, desc = "spawn a train" },
-	{ label = "gunslinger4",         hash = 0x5AA369CA, desc = "spawn a long train" },
-	{ label = "handcart",            hash = 0x3EDA466D, desc = "spawn a hand cart" },
-	{ label = "mine cart",           hash = 0xC75AA08C, desc = "spawn a mine cart" },
-	{ label = "industry2 (real)",    hash = 0x767DEB32, desc = "spawn a train" },
-	{ label = "trolley (city)",      hash = 0xBF69518F, desc = "city trolley, short track only" },
-	{ label = "big train 2",         hash = 0x005E03AD, desc = "spawn a train" },
-	{ label = "industry2 (alt)",     hash = 0x0660E567, desc = "spawn a train" },
-	{ label = "big train",           hash = 0x0392C83A, desc = "spawn a train" },
-}
+Config.UseEastTrain = true           -- Choose to use or not use each of the trains
+Config.UseWestTrain = true
+Config.UseTram = true
 
--- Back-compat for old trainmodel1-14 references (mapped to above)
-Config.trainmodel1 = 0x3ADC4DA9
-Config.trainmodel2 = 0x515E31ED
-Config.trainmodel3 = 0x487B2BE7
-Config.trainmodel4 = 0x8EAC625C
-Config.trainmodel5 = 0xF9B038FC
-Config.trainmodel6 = 0x005E03AD
-Config.trainmodel7 = 0x3260CE89
-Config.trainmodel8 = 0x0E62D710
-Config.trainmodel9 = 0x3D72571D
-Config.trainmodel10 = 0x5AA369CA
-Config.trainmodel11 = 0x3EDA466D
-Config.trainmodel12 = 0x0660E567
-Config.trainmodel13 = 0xC75AA08C
-Config.trainmodel14 = 0x0392C83A
+Config.UsePassengersTram = true
 
--- Every other hash in eTrainConfig. Mostly test/duplicate/broken. Only added when ShowExperimental=true.
-Config.ExperimentalHashes = {
-	0x0941ADB7, 0x09B679D6, 0x0CCC2F70, 0x0D03C58D, 0x10461E19, 0x124A1F89,
-	0x19A0A288, 0x1C043595, 0x1C9936BB, 0x1EEC5C2A, 0x1EF82A51, 0x25E5D8FF,
-	0x29C81ACB, 0x2D1A6F0C, 0x2D3645FA, 0x31656D23, 0x35D17C43, 0x41436136,
-	0x4A73E49C, 0x4C9CCB22, 0x57C209C4, 0x592A5CD0, 0x5D9928A4, 0x68CF495F,
-	0x6CC26E27, 0x6D69A954, 0x73722125, 0x761CE0AD, 0x7BD58C4D, 0x8864D73A,
-	0x8D0766BC, 0x90CB53CA, 0x9296570E, 0x96563327, 0x98427740, 0x9897FF51,
-	0x998A0CBC, 0x9CBE6FEC, 0x9E096E46, 0xA3BF0BEB, 0xA8B1CEB7, 0xA91041A2,
-	0xAA3E691E, 0xAC18A9F4, 0xAEE0ECF5, 0xC1F1DD80, 0xC732CDC8, 0xCA19C62A,
-	0xD233B18D, 0xD42DD3EE, 0xD5DF2D82, 0xD8CF6395, 0xD92B16AE, 0xD93C36C2,
-	0xDA2EDE2F, 0xDC9DD041, 0xDD920DAF, 0xE0898B89, 0xE16CA3EF, 0xEB8B2439,
-	0xEF9FC71D, 0xEFBFBDD8, 0xF19E48CA, 0xF6AA98F4, 0xFAB2FFB9, 0xFAC328F0, 0xFD8810E8,
-}
-Config.Location = vector3(-162.8994, 638.43988, 114.03205) -- location of the menu
+Config.UseChristmasTrainEast = false -- Spawns a christmas train with decorations
+Config.UseChristmasTrainWest = false
 
---- train stations where the train stops
--- dont touch if you dont know what you are doing
-Config.Stops = {
+Config.UseFancyTrainEast = true      -- Spawns a fancy train with fancy cabins (forces train hash)
+Config.UseFancyTrainWest = false
 
-	{ dst = 180.0, dst2 = 4.0, x = -142.67, y = 654.18, z = 113.52, time = 60000, name = "Valentine Station" },
-	{ dst = 400.0, dst2 = 4.0, x = 2685.39, y = -1480.33, z = 45.80, time = 60000, name = "Saint Denis Station" },
-	{ dst = 220.0, dst2 = 4.0, x = 1197.48, y = -1282.29, z = 76.45, time = 60000, name = "Rhodes Station" },
-	{ dst = 220.0, dst2 = 4.0, x = -379.38, y = -369.51, z = 86.44, time = 30000, name = "Flatneck Station" },
-	{ dst = 180.0, dst2 = 4.0, x = -1118.27, y = -567.17, z = 82.67, time = 30000, name = "Riggs Station" },
-	{ dst = 180.0, dst2 = 4.0, x = -1291.04, y = 440.69, z = 94.36, time = 30000, name = "Wallace Station" },
-	{ dst = 180.0, dst2 = 4.0, x = 610.54, y = 1661.53, z = 188.0, time = 30000, name = "Bacchus Station" },
-	{ dst = 220.0, dst2 = 4.0, x = 2914.50, y = 1238.53, z = 44.73, time = 60000, name = "Annesburg Station" },
-	{ dst = 180.0, dst2 = 4.0, x = 2879.30, y = 592.75, z = 57.84, time = 60000, name = "Van Horn Tradin Post" }
-}
+Config.EastTrainDirection = false    -- set to true to have it go the other way
+Config.WestTrainDirection = false
 
---  leave in on place theres only one train that can operate at the time
-Config.RailroadNpc = {
-	valentine = {
-		Model = "U_M_M_RhdTrainStationWorker_01", -- npc model
-		Pos = vector3(-162.5611, 638.82128, 114.03203 - 1), -- npc location add the same as the location of the menu
-		Heading = 148.31669 -- heading of the npc
-	},
+Config.UseTrainBlips = true
+Config.TrainBlipNameEast = "BGS East Line"
+Config.TrainBlipNameWest = "BGS West Line"
+Config.TrainBlipNameTram = "BGS Tram"
+
+Config.EastTrain = 0xCD2C7CA1   -- List can be found at https://alloc8or.re/rdr3/doc/enums/eTrainConfig.txt
+Config.WestTrain = 0xCD2C7CA1
+Config.Trolley = 0xBF69518F     --trolley_config = 0xBF69518F
+                                --trolley_config2 = 0x09B679D6
+
+Config.StationWaitTime = 60     -- time that trains wait at a station (in seconds)
+Config.TrainDespawnTimer = 10   -- time to despawn stuck/abandoned trains (in minutes)
+
+Config.ProtectTrainDrivers = true -- SHOULD protect the train driver from being kicked out if set to true (let me know if it doesn't)
+
+Config.UseManualJunctions = true  -- Whether or not to use manual train junction track switches
+
+Config.RouteOneTramSwitches = {
+
+    { coords = vector3(2775.01, -1350.06, 46.14),       trainTrack = -1739625337,  junctionIndex = 0,  enabled = 0 },
+    -- { coords = vector3(2686.55, -1385.46, 46.36679),    trainTrack = -1739625337,  junctionIndex = 3,  enabled = 1 },
+    { coords = vector3(2621.25, -1295.36, 52.01),       trainTrack = -1739625337,  junctionIndex = 5,  enabled = 0 },
+    -- { coords = vector3(2615.05, -1281.2, 52.34358),     trainTrack = -1739625337,  junctionIndex = 6,  enabled = 1 },
+    -- { coords = vector3(2608.49, -1254.66, 52.66566),    trainTrack = -1739625337,  junctionIndex = 7,  enabled = 1 },
+    { coords = vector3(2608.6, -1155.59, 51.69),        trainTrack = -1739625337,  junctionIndex = 10, enabled = 1 },
+    { coords = vector3(2624.4, -1139.85, 51.51707),     trainTrack = -1739625337,  junctionIndex = 11, enabled = 1 },
+    { coords = vector3(2700.96, -1139.82, 50.29),       trainTrack = -1739625337,  junctionIndex = 13, enabled = 1 },
+    { coords = vector3(2625.46, -1284.62, 52.14),       trainTrack = 1751550675,   junctionIndex = 1,  enabled = 1 },
+    -- { coords = vector3(2738.41, -1414.91, 45.85),       trainTrack = -1748581154,  junctionIndex = 1,  enabled = 1 },
+    -- { coords = vector3(2599.47, -1137.39, 51.3),        trainTrack = -1716490906,  junctionIndex = 4,  enabled = 1 },
 
 }
 
---################ DONT TOUCH VALUE AND INFO #########################
---ONLY translate LABEL
---ONLY translate DESC
--- Built dynamically from Config.Trains (+ experimental when enabled) so menu supports any count.
+Config.SwitchObjects = {
+    { pushed = false, coords = vector3(610.658, 1664.129, 186.277),  trainTrack = -705539859, junctionIndex = 8, enabled = 0 },
+    { pushed = false, coords = vector3(-277.118, -316.180, 87.916), trainTrack = -705539859, junctionIndex = 2, enabled = 0 },
+    { pushed = false, coords = vector3(357.878, 598.077, 114.590),  trainTrack = 1499637393, junctionIndex = 4, enabled = 1 },
+}
 
-Config.Elements = {}
-for i, t in ipairs(Config.Trains) do
-	Config.Elements[#Config.Elements + 1] = { label = t.label, value = 'train_' .. i, desc = t.desc, info = t.hash }
-end
-if Config.ShowExperimental then
-	for _, h in ipairs(Config.ExperimentalHashes) do
-		Config.Elements[#Config.Elements + 1] = { label = string.format("exp_%08X", h), value = 'exp', desc = "experimental, may crash", info = h }
-	end
-end
---TRANSLATE
-Press = "Press"
-TrainPrompt = "Valentine Conductor"
-MenuTittle = "RAIL ROAD"
-MenuSubTittle = "Valentine"
+
+Config.EastJunctions = {
+
+    { coords = vector3(-281.1323, -319.6579, 89.02458), trainTrack = -705539859,  junctionIndex = 2,  enabled = 0 },
+    { coords = vector3(357.959, 596.374, 115.6759),     trainTrack = 1499637393,  junctionIndex = 4,  enabled = 1 },
+    { coords = vector3(1481.54, 648.331, 92.30682),     trainTrack = 1499637393,  junctionIndex = 2,  enabled = 1 },
+    { coords = vector3(2464.55, -1475.74, 46.15192),    trainTrack = -760570040,  junctionIndex = 5,  enabled = 1 },
+    { coords = vector3(2654.026, -1477.149, 45.75834),  trainTrack = -1242669618, junctionIndex = 2,  enabled = 1 },
+    { coords = vector3(2659.79, -435.7114, 43.38848),   trainTrack = -705539859,  junctionIndex = 13, enabled = 0 },
+    { coords = vector3(610.3571, 1661.904, 187.3867),   trainTrack = -705539859,  junctionIndex = 8,  enabled = 0 },
+    { coords = vector3(556.65, 1725.99, 187.7966),      trainTrack = -705539859,  junctionIndex = 7,  enabled = 1 },
+    { coords = vector3(2588.54, -1482.19, 46.04693),    trainTrack = -705539859,  junctionIndex = 18, enabled = 1 },
+
+}
+
+Config.WestJunctions = {
+    { coords = vector3(-2187.18, -2517.21, 65.7),       trainTrack = -988268728,  junctionIndex = 0,  enabled = 1 },
+    { coords = vector3(-2214.62, -2519.47, 65.51),      trainTrack = -1763976500,  junctionIndex = 1,  enabled = 1 },
+    { coords = vector3(-2214.62, -2519.47, 65.51),      trainTrack = -1467515357,  junctionIndex = 0,  enabled = 1 }
+}
+
+-- Custom stops - simply add coords here and the trains will stop there!
+Config.CustomStops = {
+    { coords = vector3(565.44, 1707.59, 187.47)},
+}

@@ -1,286 +1,705 @@
---######################### edit for VORP by: outsider ########################
-local prompts = GetRandomIntInRange(0, 0xffffff)
-local openmenu
-local inmenu = false
-local stops = Config.Stops
-CURRENT_TRAIN = nil
-local trainspawned = false
-local trainrunning = false
-local npcs = {}
-local MenuData = exports.vorp_menu:GetMenuData()
-local PlayerJob
+local canSpawn = false
+local switch
+local switchPrompt
 
-AddEventHandler('vorp_menu:closemenu', function()
-	if inmenu then
-		inmenu = false
+local westTrain
+local westConductor
+local eastTrain
+local eastConductor
+local tram
+local tramConductor
+local Trains = {}
+local TrainModels = {
+    'northsteamer01x'
+}
+local object
+
+local christmasTrainHash = 0x124A1F89
+
+local entityEnumerator = {
+    __gc = function(enum)
+        if enum.destructor and enum.handle then
+            enum.destructor(enum.handle)
+        end
+        enum.destructor = nil
+        enum.handle = nil
+    end
+}
+
+local function EnumerateEntities(firstFunc, nextFunc, endFunc)
+    return coroutine.wrap(function()
+        local iter, id = firstFunc()
+
+        if not id or id == 0 then
+            endFunc(iter)
+            return
+        end
+
+        local enum = {handle = iter, destructor = endFunc}
+        setmetatable(enum, entityEnumerator)
+
+        local next = true
+        repeat
+            coroutine.yield(id)
+            next, id = nextFunc(iter)
+        until not next
+
+        enum.destructor, enum.handle = nil, nil
+        endFunc(iter)
+    end)
+end
+
+local function EnumerateVehicles()
+    return EnumerateEntities(FindFirstVehicle, FindNextVehicle, EndFindVehicle)
+end
+
+local function IsTrain(vehicle)
+    local model = GetEntityModel(vehicle)
+
+    for _, trainModel in ipairs(TrainModels) do
+        if model == GetHashKey(trainModel) then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function GetSwitchObject()
+
+	if switchPrompt then
+		return
 	end
-end)
 
-function InsertNpcs()
-	for z, x in pairs(Config.RailroadNpc) do
-		while not HasModelLoaded(GetHashKey(Config.RailroadNpc[z]["Model"])) do
-			Wait(500)
-			Modelrequest(GetHashKey(Config.RailroadNpc[z]["Model"]))
+    local size = 0
+
+	local itemSet = CreateItemset(true)
+
+	size = Citizen.InvokeNative(0x59B57C4B06531E1E, GetEntityCoords(PlayerPedId()), 7.5, itemSet, 3, Citizen.ResultAsInteger())
+
+	if size > 0 then
+		for index = 0, size do
+			local entity = GetIndexedItemInItemset(index, itemSet)
+			local model_hash = GetEntityModel(entity)
+			if model_hash == joaat("s_railswitch01x_cmbd") then
+				if IsItemsetValid(itemSet) then
+					DestroyItemset(itemSet)
+				end
+				return entity
+			end
 		end
-		local npc = CreatePed(GetHashKey(Config.RailroadNpc[z]["Model"]), Config.RailroadNpc[z]["Pos"].x, Config.RailroadNpc[z]["Pos"].y, Config.RailroadNpc[z]["Pos"].z, Config.RailroadNpc[z]["Heading"], false, false, 0, 0)
-		while not DoesEntityExist(npc) do
-			Wait(300)
-		end
-		Citizen.InvokeNative(0x283978A15512B2FE, npc, true)
-		FreezeEntityPosition(npc, false)
-		SetEntityInvincible(npc, true)
-		TaskStandStill(npc, -1)
-		Wait(100)
-		SET_PED_RELATIONSHIP_GROUP_HASH(npc, GetHashKey(Config.RailroadNpc[z]["Model"]))
-		SetEntityCanBeDamagedByRelationshipGroup(npc, false, GetHashKey("PLAYER"))
-		SetEntityAsMissionEntity(npc, true, true)
-		SetModelAsNoLongerNeeded(GetHashKey(Config.RailroadNpc[z]["Model"]))
-		table.insert(npcs, { npc = npc, coords = x.Pos })
+	end
+
+	if IsItemsetValid(itemSet) then
+		DestroyItemset(itemSet)
 	end
 end
 
-Citizen.CreateThread(function()
-	Citizen.Wait(5000)
-	local str = Press
-	openmenu = PromptRegisterBegin()
-	PromptSetControlAction(openmenu, 0x760A9C6F) -- G
-	str = CreateVarString(10, 'LITERAL_STRING', str)
-	PromptSetText(openmenu, str)
-	PromptSetEnabled(openmenu, 1)
-	PromptSetVisible(openmenu, 1)
-	PromptSetStandardMode(openmenu, 1)
-	PromptSetHoldMode(openmenu, 1)
-	PromptSetGroup(openmenu, prompts)
-	Citizen.InvokeNative(0xC5F428EE08FA7F2C, openmenu, true)
-	PromptRegisterEnd(openmenu)
-end)
+local function SwitchJunction(railswitch, switchInfo)
+	local sound = GetSoundId()
+	ClearPedTasks(PlayerPedId())
+	RequestAnimDict("script_story@trn3@ig@ig_1_pulllever")
+	while not HasAnimDictLoaded("script_story@trn3@ig@ig_1_pulllever") do
+		Wait(1)
+	end
+	if switchInfo.pushed then
+		SetEntityCoords(PlayerPedId(), GetOffsetFromEntityInWorldCoords(railswitch, vec3(0.0, 3.425791, 0.0)), false, false, false, false)
+		TaskTurnPedToFaceEntity(PlayerPedId(), railswitch, -1)
+		Wait(2000)
+		PlayEntityAnim(railswitch, "pulllever_railswitch", "script_story@trn3@ig@ig_1_pulllever", 1.0, false, true,false,0.0,32768)
+		TaskPlayAnim(PlayerPedId(), "script_story@trn3@ig@ig_1_pulllever", "pulllever_arthur", 1.0,	1.0, -1, 0, 0.0, false, false, false, '', false)
+		Wait(1250)
+		Citizen.InvokeNative(0xF1C5310FEAA36B48, sound, "lock_gate", railswitch, "MOB1_Sounds", 0)
+	else
+		SetEntityCoords(PlayerPedId(), GetOffsetFromEntityInWorldCoords(railswitch, vec3(0.0, 3.425791, 0.0)), false, false, false, false)
+		TaskTurnPedToFaceEntity(PlayerPedId(), railswitch, -1)
+		Wait(2000)
+		PlayEntityAnim(railswitch, "leverpush_railswitch", "script_story@trn3@ig@ig_1_pulllever", 1.0, false, true,false,0.0,32768)
+		TaskPlayAnim(PlayerPedId(), "script_story@trn3@ig@ig_1_pulllever", "leverpush_arthur", 1.0,	1.0, -1, 0, 0.0, false, false, false, '', false)
+		Wait(1250)
+		Citizen.InvokeNative(0xF1C5310FEAA36B48, sound, "lock_gate", railswitch, "MOB1_Sounds", 0)
+	end
 
+	Wait(250)
+	Citizen.InvokeNative(0x3210BCB36AF7621B, sound)
+	if switchInfo.enabled == 0 then
+		switchInfo.enabled = 1
+	else
+		switchInfo.enabled = 0
+	end
+	switchInfo.pushed = not switchInfo.pushed
 
+	for index, value in ipairs(Config.SwitchObjects) do
+		if value.coords == switchInfo.coords then
+			value.enabled = switchInfo.enabled
+			value.pushed = switchInfo.pushed
+		end
+	end
 
-Citizen.CreateThread(function()
-	InsertNpcs()
-	while true do
-		Citizen.Wait(0)
+	for index, value in ipairs(Config.EastJunctions) do
+		if value.trainTrack == switchInfo.trainTrack and value.junctionIndex == switchInfo.junctionIndex then
+			value.enabled = switchInfo.enabled
+		end
+	end
 
-		local player = PlayerPedId()
-		local sleep = true
-		local playercoords = GetEntityCoords(player)
+	for index, value in ipairs(Config.WestJunctions) do
+		if value.trainTrack == switchInfo.trainTrack and value.junctionIndex == switchInfo.junctionIndex then
+			value.enabled = switchInfo.enabled
+		end
+	end
+end
 
+local function RenderSwitchPrompt(switchObject)
+	if switchPrompt then
+		return
+	end
+	if switchObject then
+		for j, switchInfo in ipairs(Config.SwitchObjects) do
+			if #(GetEntityCoords(switchObject) - switchInfo.coords) < 1.0 then
+				CreateThread(function ()
+					switchPrompt = PromptRegisterBegin()
+					PromptSetControlAction(switchPrompt, joaat("INPUT_CONTEXT_Y"))
+					PromptSetText(switchPrompt, CreateVarString(10, "LITERAL_STRING", "Switch Track"))
+					PromptSetStandardMode(switchPrompt, true)
+					PromptRegisterEnd(switchPrompt)
 
-		if not inmenu then
-		
-				local dist = Vdist2(playercoords, Config.Location, true) --location
-				if 2.0 > dist then
-					sleep = false
-					local label = CreateVarString(10, 'LITERAL_STRING', TrainPrompt)
-					PromptSetActiveGroupThisFrame(prompts, label)
-					if Citizen.InvokeNative(0xC92AC953F0A982AE, openmenu) then
-						 TriggerServerEvent("get:PlayerJob") 
-                                                 Wait(200)
-						if PlayerJob == Config.Job then
-						   inmenu = true
-						   TrainMenu()
+					local coords = GetOffsetFromEntityInWorldCoords(switchObject, 0.0, 3.525791, 0)
+
+					if coords.x == 0 or coords.z == 0 then
+						PromptDelete(switchPrompt)
+						switchPrompt = nil
+						return
+					end
+
+					local radius = 0.5
+					-- _UI_PROMPT_CONTEXT_SET_POINT
+					Citizen.InvokeNative(0xAE84C5EE2C384FB3, switchPrompt, coords)
+					-- _UI_PROMPT_CONTEXT_SET_RADIUS
+					Citizen.InvokeNative(0x0C718001B77CA468, switchPrompt, radius)
+
+					while true do
+						PromptSetEnabled(switchPrompt, true)
+						Wait(1)
+						if PromptHasStandardModeCompleted(switchPrompt, 0) then
+							PromptSetEnabled(switchPrompt, false)
+							SwitchJunction(switchObject, switchInfo)
+							Wait(10000)
+						end
+					end
+				end)
+			end
+		end
+	end
+end
+
+-- Decorate Christmas train
+local function DecorateTrain(vehicle)
+    object = CreateObjectNoOffset(GetHashKey('mp006_p_veh_xmasnsteamer01x'), 0, 0, 0, false, false, false, false)
+    AttachEntityToEntity(object, vehicle, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, false, false, false, false, 0, true, false, false)
+    return object
+end
+
+-- Handle Christmas train shit
+local function HandleChristmasTrains()
+	CreateThread(function()
+		while true do
+			Wait(1000)
+	
+			if Config.UseChristmasTrainEast or Config.UseChristmasTrainWest then
+				for vehicle in EnumerateVehicles() do
+					if Config.UseChristmasTrainEast and vehicle == eastTrain then
+						if IsTrain(vehicle) and not Trains[vehicle] then
+							Trains[vehicle] = DecorateTrain(vehicle)
+						end
+					end
+					if Config.UseChristmasTrainWest and vehicle == westTrain then
+						if IsTrain(vehicle) and not Trains[vehicle] then
+							Trains[vehicle] = DecorateTrain(vehicle)
 						end
 					end
 				end
-			
+	
+				for train, object in pairs(Trains) do
+					if not DoesEntityExist(train) then
+						DeleteEntity(object)
+						Trains[train] = nil
+					end
+				end
+			end
 		end
-		if sleep then
-			Citizen.Wait(500)
+	end)
+end
+
+local function ReplaceCabinInterior(carriage, interior)
+	local propset = Citizen.InvokeNative(0xCFC0BD09BB1B73FF, carriage)
+	local propsetHash = Citizen.InvokeNative(0xA6A9712955F53D9C, propset)
+	local request = Citizen.InvokeNative(0xF3DE57A46D5585E9, interior)
+
+	if Citizen.InvokeNative(0xF42DB680A8B2A4D9, propset) then
+		while not Citizen.InvokeNative(0x48A88FC684C55FDC, propsetHash) do
+			Wait(1)
+		end
+		Citizen.InvokeNative(0x3BCF32FF37EA9F1D, carriage)
+	else
+		return false
+	end
+
+	while not Citizen.InvokeNative(0x48A88FC684C55FDC, interior) do
+		Wait(1)
+	end
+
+	local attachedPropset = Citizen.InvokeNative(0x9609DBDDE18FAD8C, interior, 0, 0, 0, carriage, 0, true, 0, true)
+
+	Citizen.InvokeNative(0xB1964A83B345B4AB, interior)
+	return true
+end
+
+local function UnlockCabinDoors(carriage)
+	Citizen.InvokeNative(0x550CE392A4672412, carriage, 9, true, true)			-- Open fancy cabin doors
+	Citizen.InvokeNative(0x550CE392A4672412, carriage, 10, true, true)			-- Open fancy cabin doors
+	Citizen.InvokeNative(0x550CE392A4672412, carriage, 11, true, true)			-- Open fancy cabin doors
+end
+
+local function HandleFancyTrain(train)
+	local barCreated = false
+	local sleepersCreated = false
+	CreateThread(function ()
+
+		while true do
+			Wait(1000)
+			local carriage = Citizen.InvokeNative(0xD0FB093A4CDB932C, train, 3)
+			local carriage2 = Citizen.InvokeNative(0xD0FB093A4CDB932C, train, 4)
+			local carriage3 = Citizen.InvokeNative(0xD0FB093A4CDB932C, train, 6)
+			local carriage4 = Citizen.InvokeNative(0xD0FB093A4CDB932C, train, 5)
+			if #(GetEntityCoords(PlayerPedId()) - GetEntityCoords(carriage4)) < 150 and (not barCreated or not sleepersCreated) then
+				if not barCreated or not sleepersCreated then
+					if not barCreated then
+						barCreated = ReplaceCabinInterior(carriage, -1747631964)
+					end
+					if not sleepersCreated then
+						sleepersCreated = ReplaceCabinInterior(carriage2, -317994478)
+					end
+					UnlockCabinDoors(carriage3)
+					UnlockCabinDoors(carriage4)
+				end
+			end
+		end
+	end)
+end
+
+-- Shared blips: server broadcasts every train's net id + position to all clients, so
+-- every player sees the same blips, even for trains that are not streamed in locally.
+local blips = {}
+local blipNames = {
+	east = Config.TrainBlipNameEast,
+	west = Config.TrainBlipNameWest,
+	tram = Config.TrainBlipNameTram,
+}
+
+local function RemoveTrainBlip(area)
+	if blips[area] then
+		if DoesBlipExist(blips[area].handle) then RemoveBlip(blips[area].handle) end
+		blips[area] = nil
+	end
+end
+
+local function UpdateTrainBlip(area, info)
+	if not Config.UseTrainBlips then return end
+	if not info then
+		RemoveTrainBlip(area)
+		return
+	end
+	local entity = 0
+	if info.net and NetworkDoesNetworkIdExist(info.net) then
+		entity = NetworkGetEntityFromNetworkId(info.net)
+	end
+	if entity ~= 0 and DoesEntityExist(entity) then
+		-- close enough: blip follows the entity
+		if not blips[area] or blips[area].kind ~= "entity" or blips[area].entity ~= entity or not DoesBlipExist(blips[area].handle) then
+			RemoveTrainBlip(area)
+			local handle = Citizen.InvokeNative(0x23F74C2FDA6E7C61, 1664425300, entity)
+			SetBlipSprite(handle, -250506368)
+			Citizen.InvokeNative(0x9CB1A1623062F402, handle, blipNames[area])
+			SetBlipScale(handle, 1.0)
+			blips[area] = { handle = handle, kind = "entity", entity = entity }
+		end
+	else
+		-- far away: blip at the position the server reports
+		RemoveTrainBlip(area)
+		local handle = Citizen.InvokeNative(0x554D9D53F696D002, 1664425300, info.x, info.y, info.z)
+		SetBlipSprite(handle, -250506368)
+		Citizen.InvokeNative(0x9CB1A1623062F402, handle, blipNames[area])
+		SetBlipScale(handle, 1.0)
+		blips[area] = { handle = handle, kind = "coords" }
+	end
+end
+
+RegisterNetEvent("BGS_Trains:client:SyncBlips", function (data)
+	for _, area in ipairs({ "east", "west", "tram" }) do
+		UpdateTrainBlip(area, data[area])
+	end
+end)
+
+AddEventHandler("onResourceStop", function (resourceName)
+	if GetCurrentResourceName() == resourceName then
+		for area in pairs(blips) do RemoveTrainBlip(area) end
+	end
+end)
+
+-- Create train and tram vehicles, network and store server side
+local function TrainCreateVehicle(trainModel, location, trainArea, direction)
+
+	CreateThread(function ()
+		while true do
+			Wait(1000)
+			local trainWagons = N_0x635423d55ca84fc8(trainModel)
+
+			for i = 0, trainWagons - 1 do
+				local trainWagonModel = N_0x8df5f6a19f99f0d5(trainModel, i)
+				RequestModel(trainWagonModel)
+				while not HasModelLoaded(trainWagonModel) do
+					Citizen.Wait(0)
+				end
+			end
+
+			local trainVeh
+
+			if trainModel ~= Config.Trolley then
+				if trainArea == "east" then
+					trainVeh = Citizen.InvokeNative(0xC239DBD9A57D2A71, trainModel, location, direction, false, true, true)
+				else
+					trainVeh = Citizen.InvokeNative(0xC239DBD9A57D2A71, trainModel, location, direction, false, true, true)
+				end
+				SetTrainSpeed(trainVeh, Config.TrainMaxSpeed)
+				SetTrainCruiseSpeed(trainVeh, Config.TrainMaxSpeed)
+				Citizen.InvokeNative(0x9F29999DFDF2AEB8, trainVeh, Config.TrainMaxSpeed)
+				Citizen.InvokeNative(0x4182C037AA1F0091, trainVeh, true) 					-- Set train stops for stations
+				Citizen.InvokeNative(0x8EC47DD4300BF063, trainVeh, 0.0) 					-- Set train offset for station
+			else
+				trainVeh = Citizen.InvokeNative(0xC239DBD9A57D2A71, trainModel, location, true, Config.UsePassengersTram, true, true)
+				SetTrainSpeed(trainVeh, 2.0)
+				Citizen.InvokeNative(0x4182C037AA1F0091, trainVeh, true) 					-- Set train stops for stations
+				Citizen.InvokeNative(0x8EC47DD4300BF063, trainVeh, 0.0) 					-- Set train offset for station
+			end
+
+			local trainDriverHandle = GetPedInVehicleSeat(trainVeh, -1)
+			while not DoesEntityExist(trainDriverHandle) do
+				trainDriverHandle = GetPedInVehicleSeat(trainVeh, -1)
+				SetEntityAsMissionEntity(trainDriverHandle, true, true)
+				Citizen.Wait(1)
+			end
+
+			if DoesEntityExist(trainVeh) and DoesEntityExist(trainDriverHandle) then
+				NetworkRegisterEntityAsNetworked(trainVeh)
+				NetworkRegisterEntityAsNetworked(trainDriverHandle)
+				if NetworkDoesNetworkIdExist(NetworkGetNetworkIdFromEntity(trainVeh)) and NetworkDoesNetworkIdExist(NetworkGetNetworkIdFromEntity(trainDriverHandle)) then
+					SetNetworkIdExistsOnAllMachines(NetworkGetNetworkIdFromEntity(trainVeh), true)
+					SetNetworkIdExistsOnAllMachines(NetworkGetNetworkIdFromEntity(trainDriverHandle), true)
+					TriggerServerEvent("BGS_Trains:server:StoreNetIndex", NetworkGetNetworkIdFromEntity(trainVeh), NetworkGetNetworkIdFromEntity(trainDriverHandle), trainArea)
+					return
+				end
+			end
+		end
+	end)
+end
+
+-- Prevent people from knocking driver out of train
+local function ProtectTrainDriver(trainDriverHandle)
+	if trainDriverHandle then
+		print("protecting train driver")
+		SetPedCanBeKnockedOffVehicle(trainDriverHandle, 1)
+		SetEntityInvincible(trainDriverHandle, true)
+		Citizen.InvokeNative(0x9F8AA94D6D97DBF4, trainDriverHandle, true)
+		SetEntityAsMissionEntity(trainDriverHandle, true, true)
+		SetEntityCanBeDamaged(trainDriverHandle, false)
+	end
+end
+
+local function SpawnTrains()
+	TriggerServerEvent("BGS_Trains:server:CanSpawnTrain")
+	Wait(3000)
+	if canSpawn then
+		if Config.UseEastTrain then
+			if Config.UseChristmasTrainEast then
+				TrainCreateVehicle(christmasTrainHash, Config.EastTrainSpawnLocation, "east", Config.EastTrainDirection)
+			elseif Config.UseFancyTrainEast then
+				TrainCreateVehicle(0xCD2C7CA1, Config.EastTrainSpawnLocation, "east", Config.EastTrainDirection)
+			else
+				TrainCreateVehicle(Config.EastTrain, Config.EastTrainSpawnLocation, "east", Config.EastTrainDirection)
+			end
+		end
+		if Config.UseWestTrain then
+			if Config.UseChristmasTrainWest then
+				TrainCreateVehicle(christmasTrainHash, Config.WestTrainSpawnLocation, "west", Config.WestTrainDirection)
+			elseif Config.UseFancyTrainWest then
+				TrainCreateVehicle(0xCD2C7CA1, Config.WestTrainSpawnLocation, "west", Config.WestTrainDirection)
+			else
+				TrainCreateVehicle(Config.WestTrain, Config.WestTrainSpawnLocation, "west", Config.WestTrainDirection)
+			end
+		end
+		if Config.UseTram then
+			TrainCreateVehicle(Config.Trolley, Config.TramSpawnLocation)
+		end
+		Wait(3000)
+		TriggerServerEvent("BGS_Trains:server:AllPlayersGetTrainsFromServer")
+	else
+		Wait(3000)
+		TriggerServerEvent("BGS_Trains:server:GetTrainsFromServer")
+	end
+end
+
+-- Spawn trains if able, if unable then store train variables from server and render blips for existing trains
+RegisterNetEvent("vorp:SelectedCharacter", function()
+	SpawnTrains()
+end)
+
+RegisterNetEvent("RSGCore:Client:OnPlayerLoaded", function()
+	SpawnTrains()
+end)
+
+-- Determine if player can spawn first trains or not
+RegisterNetEvent("BGS_Trains:client:CanSpawnTrain", function(canSpawnTrains)
+	canSpawn = canSpawnTrains
+end)
+
+-- Get net indexes for train values from server, convert and store
+RegisterNetEvent("BGS_Trains:client:GetTrainsFromServer", function (eastNet, westNet, tramNet, eastConductorNet, westConductorNet, tramConductorNet)
+	local spawnedWest = true
+	local spawnedEast = true
+	local spawnedTram = true
+	if Config.UseEastTrain then
+		spawnedEast = false
+		if eastNet then
+			eastTrain = NetworkGetEntityFromNetworkId(eastNet)
+			eastConductor = NetworkGetEntityFromNetworkId(eastConductorNet)
+			ProtectTrainDriver(eastConductor)
+			spawnedEast = true
+			Citizen.InvokeNative(0xA670B3662FAFFBD0, eastNet)
+			Citizen.InvokeNative(0xA670B3662FAFFBD0, eastConductorNet)
+		end
+	end
+	if Config.UseWestTrain then
+		spawnedWest = false
+		if westNet then
+			westTrain = NetworkGetEntityFromNetworkId(westNet)
+			westConductor = NetworkGetEntityFromNetworkId(westConductorNet)
+			ProtectTrainDriver(westConductor)
+			spawnedWest = true
+			Citizen.InvokeNative(0xA670B3662FAFFBD0, westNet)
+			Citizen.InvokeNative(0xA670B3662FAFFBD0, westConductorNet)
+		end
+	end
+	if Config.UseTram then
+		spawnedTram = false
+		if tramNet then
+			tram = NetworkGetEntityFromNetworkId(tramNet)
+			tramConductor = NetworkGetEntityFromNetworkId(tramConductorNet)
+			FreezeEntityPosition(tramConductor, true)
+			ProtectTrainDriver(tramConductor)
+			spawnedTram = true
+			Citizen.InvokeNative(0xA670B3662FAFFBD0, tramNet)
+			Citizen.InvokeNative(0xA670B3662FAFFBD0, tramConductorNet)
+		end
+	end
+
+	if spawnedWest and spawnedEast and spawnedTram then
+		if Config.UseChristmasTrainEast or Config.UseChristmasTrainWest then
+			HandleChristmasTrains()
+		end
+		if Config.UseFancyTrainEast then
+			HandleFancyTrain(eastTrain)
+		end
+		if Config.UseFancyTrainWest then
+			HandleFancyTrain(westTrain)
+		end
+		return
+	else
+		Wait(1000)
+		TriggerServerEvent("BGS_Trains:server:GetTrainsFromServer")
+		return
+	end
+end)
+
+-- Server watchdog asks one client to respawn a train that vanished (owner left, stuck, deleted)
+RegisterNetEvent("BGS_Trains:client:ResetTrain", function (trainArea)
+	if trainArea == "east" then
+		if Config.UseChristmasTrainEast then
+			TrainCreateVehicle(christmasTrainHash, Config.EastTrainSpawnLocation, "east", Config.EastTrainDirection)
+		elseif Config.UseFancyTrainEast then
+			TrainCreateVehicle(0xCD2C7CA1, Config.EastTrainSpawnLocation, "east", Config.EastTrainDirection)
+		else
+			TrainCreateVehicle(Config.EastTrain, Config.EastTrainSpawnLocation, "east", Config.EastTrainDirection)
+		end
+	elseif trainArea == "west" then
+		if Config.UseChristmasTrainWest then
+			TrainCreateVehicle(christmasTrainHash, Config.WestTrainSpawnLocation, "west", Config.WestTrainDirection)
+		elseif Config.UseFancyTrainWest then
+			TrainCreateVehicle(0xCD2C7CA1, Config.WestTrainSpawnLocation, "west", Config.WestTrainDirection)
+		else
+			TrainCreateVehicle(Config.WestTrain, Config.WestTrainSpawnLocation, "west", Config.WestTrainDirection)
+		end
+	elseif trainArea == "tram" then
+		TrainCreateVehicle(Config.Trolley, Config.TramSpawnLocation, "tram")
+	end
+	Wait(5000)
+	TriggerServerEvent("BGS_Trains:server:AllPlayersGetTrainsFromServer")
+end)
+
+CreateThread(function ()
+	if not Config.UseManualJunctions then
+		return
+	end
+	while true do
+		Wait(2500)
+		for index, value in ipairs(Config.SwitchObjects) do
+			if #(GetEntityCoords(PlayerPedId()) - value.coords) < 20 and not switch then
+				switch = GetSwitchObject()
+				RenderSwitchPrompt(switch)
+			end
+		end
+		if switch and switchPrompt then
+			if #(GetEntityCoords(PlayerPedId()) - GetEntityCoords(switch)) > 20 then
+				PromptDelete(switchPrompt)
+				switchPrompt = nil
+				switch = nil
+			end
 		end
 	end
 end)
 
-function DeleteCurrentTrain()
-	if CURRENT_TRAIN and DoesEntityExist(CURRENT_TRAIN) then
-		DeleteEntity(CURRENT_TRAIN)
+-- Handle west train shit
+CreateThread(function()
+	if not Config.UseWestTrain then
+		return
 	end
-	CURRENT_TRAIN = nil
-	trainspawned = false
-	trainrunning = false
-end
-
-function TrainMenu()
-	MenuData.CloseAll()
-	local elements = {}
-	for _, e in ipairs(Config.Elements) do
-		elements[#elements + 1] = e
-	end
-	-- always offer a stop/delete entry so you can remove the current train and spawn the next one
-	elements[#elements + 1] = { label = "DELETE current train", value = 'delete', desc = "stop + delete train to spawn next" }
-
-	MenuData.Open('default', GetCurrentResourceName(), 'railway_main',
-		{
-			title    = MenuTittle,
-			subtext  = MenuSubTittle,
-			align    = 'top-left',
-			elements = elements,
-		},
-
-			function(data, menu)
-			if (data.current.value == 'delete') then
-				DeleteCurrentTrain()
-				menu.close()
-				TriggerEvent("vorp:TipRight", "train deleted, you can spawn next!", 3000)
-			elseif data.current.info then
-				-- generic: works for any number of trains (train_X, exp, legacy hashX)
-				StartTrain(data.current.info)
-			end
-		
-		end,
-
-
-		function(data, menu)
-			menu.close()
-
-		end)
-end
-
-function StartTrain(hash)
-
-	if trainspawned == false then
-		SetRandomTrains(false)
-		--requestmodel--
-		local trainWagons = N_0x635423d55ca84fc8(hash)
-		for wagonIndex = 0, trainWagons - 1 do
-			local trainWagonModel = N_0x8df5f6a19f99f0d5(hash, wagonIndex)
-			while not HasModelLoaded(trainWagonModel) do
-				Citizen.InvokeNative(0xFA28FE3A6246FC30, trainWagonModel, 1)
-				Citizen.Wait(100)
-			end
-		end
-		--spawn train--
-		local train = N_0xc239dbd9a57d2a71(hash, GetEntityCoords(PlayerPedId()), 0, 1, 1, 1)
-		SetTrainSpeed(train, 0.0)
-		local coords = GetEntityCoords(train)
-		local trainV = vector3(coords.x, coords.y, coords.z)
-		-- warp ped into train (valentine)
-		DoScreenFadeOut(500)
-		Wait(1000)
-		Citizen.InvokeNative(0x203BEFFDBE12E96A, PlayerPedId(), -167.4587, 622.33398, 114.6397 - 1, 141.77737)
-		Wait(1000)
-		DoScreenFadeIn(500)
-		SetModelAsNoLongerNeeded(train)
-		--blip--
-		local bliphash = -399496385
-		local blip = Citizen.InvokeNative(0x23f74c2fda6e7c61, bliphash, train) -- blip for train
-		SetBlipScale(blip, 1.5)
-		CURRENT_TRAIN = train
-		trainspawned = true
-		trainrunning = true
-		-- Lock driver seat when driving is disabled in config
-		if Config.AllowDriving == false then
-			SetVehicleDoorsLocked(train, 4)
-			SetVehicleDoorsLockedForAllPlayers(train, true)
-		end
-	else
-		TriggerEvent("vorp:TipRight", "train is already out, check map!", 3000)
-	end
-
-end
-
-Citizen.CreateThread(function()
+	local stopped = false
 	while true do
-		Wait(0)
-		if trainrunning == true then
-			for i = 1, #stops do
-				local coords = GetEntityCoords(CURRENT_TRAIN)
-				local trainV = vector3(coords.x, coords.y, coords.z)
-				local distance = #(vector3(stops[i]["x"], stops[i]["y"], stops[i]["z"]) - trainV)
-
-				--speed--
-				local stopspeed = 0.0
-				local cruisespeed = 5.0
-				local fullspeed = 15.0
-
-				if distance < stops[i]["dst"] then
-					SetTrainCruiseSpeed(CURRENT_TRAIN, cruisespeed)
-					Wait(200)
-					if distance < stops[i]["dst2"] then
-						SetTrainCruiseSpeed(CURRENT_TRAIN, stopspeed)
-						Wait(stops[i]["time"])
-						TriggerServerEvent('InteractSound_SV:PlayWithinDistance', 10, 'allaboard', 1.0)
-						Wait(10000)
-						SetTrainCruiseSpeed(CURRENT_TRAIN, cruisespeed)
-						Wait(10000)
-					end
-				elseif distance > stops[i]["dst"] then
-					SetTrainCruiseSpeed(CURRENT_TRAIN, fullspeed)
-					Wait(25)
+		Wait(500)
+		if westTrain then
+			for i = 1, #Config.WestJunctions do
+				if GetDistanceBetweenCoords(GetEntityCoords(westTrain), Config.WestJunctions[i].coords) < 25 then
+					Citizen.InvokeNative(0xE6C5E2125EB210C1, Config.WestJunctions[i].trainTrack, Config.WestJunctions[i].junctionIndex, Config.WestJunctions[i].enabled)
+					Citizen.InvokeNative(0x3ABFA128F5BF5A70, Config.WestJunctions[i].trainTrack, Config.WestJunctions[i].junctionIndex, Config.WestJunctions[i].enabled)
+				end
+			end
+			if Citizen.InvokeNative(0xE887BD31D97793F6, westTrain) then
+				Citizen.InvokeNative(0x3660BCAB3A6BB734, westTrain)
+				Wait(Config.StationWaitTime*1000)
+				Citizen.InvokeNative(0x787E43477746876F, westTrain)
+			end
+			for index, stop in ipairs(Config.CustomStops) do
+				if GetDistanceBetweenCoords(stop.coords, GetEntityCoords(westTrain)) < 7.5 and not stopped then
+					Citizen.InvokeNative(0x3660BCAB3A6BB734, westTrain)
+					Wait(Config.StationWaitTime*1000)
+					Citizen.InvokeNative(0x787E43477746876F, westTrain)
+					stopped = true
+				end
+				if GetDistanceBetweenCoords(stop.coords, GetEntityCoords(westTrain)) > 7.5 then
+					stopped = false
 				end
 			end
 		end
 	end
 end)
 
-RegisterNetEvent("send:PlayerJob")
-AddEventHandler("send:PlayerJob", function(Job)
-	PlayerJob = Job
-
+-- Handle east train shit
+CreateThread(function()
+	if not Config.UseEastTrain then
+		return
+	end
+	local stopped = false
+	while true do
+		Wait(500)
+		if eastTrain then
+			for i = 1, #Config.EastJunctions do
+				if GetDistanceBetweenCoords(GetEntityCoords(eastTrain), Config.EastJunctions[i].coords) < 15 then
+					if Config.EastJunctions[i].trainTrack == -705539859 and Config.EastJunctions[i].junctionIndex == 2 and not Config.UseManualJunctions then
+						Config.EastJunctions[i].enabled = Config.EastJunctions[i].enabled == 0 and 1 or 0
+						Citizen.InvokeNative(0xE6C5E2125EB210C1, Config.EastJunctions[i].trainTrack, Config.EastJunctions[i].junctionIndex, Config.EastJunctions[i].enabled)
+						Citizen.InvokeNative(0x3ABFA128F5BF5A70, Config.EastJunctions[i].trainTrack, Config.EastJunctions[i].junctionIndex, Config.EastJunctions[i].enabled)
+						Wait(45000)
+					else
+						Citizen.InvokeNative(0xE6C5E2125EB210C1, Config.EastJunctions[i].trainTrack, Config.EastJunctions[i].junctionIndex, Config.EastJunctions[i].enabled)
+						Citizen.InvokeNative(0x3ABFA128F5BF5A70, Config.EastJunctions[i].trainTrack, Config.EastJunctions[i].junctionIndex, Config.EastJunctions[i].enabled)
+					end
+				end
+			end
+			if Citizen.InvokeNative(0xE887BD31D97793F6, eastTrain) then
+				Citizen.InvokeNative(0x3660BCAB3A6BB734, eastTrain)
+				Wait(Config.StationWaitTime*1000)
+				Citizen.InvokeNative(0x787E43477746876F, eastTrain)
+			end
+			for index, stop in ipairs(Config.CustomStops) do
+				if GetDistanceBetweenCoords(stop.coords, GetEntityCoords(eastTrain)) < 15 and not stopped then
+					Citizen.InvokeNative(0x3660BCAB3A6BB734, eastTrain)
+					Wait(Config.StationWaitTime*1000)
+					Citizen.InvokeNative(0x787E43477746876F, eastTrain)
+					stopped = true
+				end
+				if GetDistanceBetweenCoords(stop.coords, GetEntityCoords(eastTrain)) > 15 then
+					stopped = false
+				end
+			end
+		end
+	end
 end)
--- Protect driver seat when Config.AllowDriving == false (same pattern as coi_train_rob)
-Citizen.CreateThread(function()
+
+-- Handle tram shit
+CreateThread(function()
+	if not Config.UseTram then
+		return
+	end
+	while true do
+		Wait(250)
+		if tram then
+			local coords = GetEntityCoords(tram)
+        	local traincoords = vector3(coords.x, coords.y, coords.z)
+			for i = 1, #Config.RouteOneTramSwitches do
+				local switchdist = #(Config.RouteOneTramSwitches[i].coords - traincoords)
+				if switchdist < 10.0 then
+					if Config.RouteOneTramSwitches[i].junctionIndex == 10 or Config.RouteOneTramSwitches[i].junctionIndex == 13 then
+						Config.RouteOneTramSwitches[i].enabled = Config.RouteOneTramSwitches[i].enabled == 0 and 1 or 0
+						Citizen.InvokeNative(0xE6C5E2125EB210C1, Config.RouteOneTramSwitches[i].trainTrack, Config.RouteOneTramSwitches[i].junctionIndex, Config.RouteOneTramSwitches[i].enabled)
+						Citizen.InvokeNative(0x3ABFA128F5BF5A70, Config.RouteOneTramSwitches[i].trainTrack, Config.RouteOneTramSwitches[i].junctionIndex, Config.RouteOneTramSwitches[i].enabled)
+						Wait(45000)
+					else
+						Citizen.InvokeNative(0xE6C5E2125EB210C1, Config.RouteOneTramSwitches[i].trainTrack, Config.RouteOneTramSwitches[i].junctionIndex, Config.RouteOneTramSwitches[i].enabled)
+						Citizen.InvokeNative(0x3ABFA128F5BF5A70, Config.RouteOneTramSwitches[i].trainTrack, Config.RouteOneTramSwitches[i].junctionIndex, Config.RouteOneTramSwitches[i].enabled)
+					end
+				end
+			end
+		end
+	end
+end)
+
+-- Protect west train driver from being knocked out of train
+CreateThread(function()
+	if not Config.UseWestTrain or not Config.ProtectTrainDrivers then
+		return
+	end
 	while true do
 		Wait(0)
-		if Config.AllowDriving == false and trainspawned and CURRENT_TRAIN and DoesEntityExist(CURRENT_TRAIN) then
-			local playerPed = PlayerPedId()
-			-- keep locked for all players
-			SetVehicleDoorsLocked(CURRENT_TRAIN, 4)
-			SetVehicleDoorsLockedForAllPlayers(CURRENT_TRAIN, true)
-			-- kick out of driver seat (-1) immediately, passengers still allowed
-			if GetPedInVehicleSeat(CURRENT_TRAIN, -1) == playerPed then
-				ClearPedTasksImmediately(playerPed)
-				TaskLeaveVehicle(playerPed, CURRENT_TRAIN, 16)
+		if westConductor and Config.ProtectTrainDrivers then
+			if #(GetEntityCoords(westConductor) - GetEntityCoords(PlayerPedId())) < 20.0 then
+				Citizen.InvokeNative(0xFC094EF26DD153FA, 12)
 			end
-			-- block enter/drive prompts near the locomotive cab
-			local tCoords = GetEntityCoords(CURRENT_TRAIN)
-			if #(GetEntityCoords(playerPed) - tCoords) < 7.0 then
-				DisableControlAction(0, 0xD9D0E1C0, true) -- INPUT_VEH_ENTER
-				DisableControlAction(0, 0xCEEA424B, true) -- INPUT_VEH_DRIVE
-				DisableControlAction(0, 0x7F8D09B8, true) -- INPUT_ENTER
+		end
+	end
+end)
+
+-- Protect east train driver from being knocked out of train
+CreateThread(function()
+	if not Config.UseEastTrain or not Config.ProtectTrainDrivers then
+		return
+	end
+	while true do
+		Wait(0)
+		if eastConductor and Config.ProtectTrainDrivers then
+			if #(GetEntityCoords(eastConductor) - GetEntityCoords(PlayerPedId())) < 20.0 then
+				Citizen.InvokeNative(0xFC094EF26DD153FA, 12)
 			end
-		else
-			Wait(1000)
 		end
 	end
 end)
--- delete all
-AddEventHandler("onResourceStop", function(resourceName)
-	if resourceName == GetCurrentResourceName() then
-		if inmenu == true then
-			PromptDelete(openmenu) -- delete prompt
-			MenuData.CloseAll() --close menu
-		end
 
-		for _, v in pairs(npcs) do
-			DeleteEntity(v.npc)
-			DeletePed(v.npc)
-			SetEntityAsNoLongerNeeded(v.npc)
-		end
-
-		DeleteEntity(CURRENT_TRAIN) --delete train
-		trainspawned = false
-		trainrunning = false
-	end
-end)
-
--- delete train
-RegisterCommand('deletetrain', function()
-	if PlayerJob == Config.Job then
-		DeleteCurrentTrain()
-	else
-		TriggerEvent("vorp:TipRight", "no permission / open train menu first!", 3000)
-	end
-end)
-
--- reset train
-RegisterCommand('resettrain', function()
-	if PlayerJob == Config.Job then
-		DeleteCurrentTrain()
-		DoScreenFadeOut(500)
-		Wait(1000)
-		Citizen.InvokeNative(0x203BEFFDBE12E96A, PlayerPedId(), -163.1477, 637.15832, 114.03209 - 1, 337.03866) --tp back to valentine
-		Wait(1000)
-		DoScreenFadeIn(500)
-	end
-end)
+SpawnTrains()
