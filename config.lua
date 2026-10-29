@@ -159,7 +159,7 @@ Config.Rob = {
     MaxTrainDistance = 400.0,       -- server check: player must be this close to the front of a train (trains are long)
     PromptText = "Rob",
     GroupText = "Passenger",
-    ScareScenario = "CODE_HUMAN_STAND_COWER", -- scenario the robbed passenger plays (name from the knowledge brain)
+    -- ScareScenario = "CODE_HUMAN_STAND_COWER", -- scenario the robbed passenger plays (name from the knowledge brain)
     -- Real voice lines (no subtitles). Names come from the RDR2 speech-line database / mission scripts.
     -- A random line the ped can say is played when robbed, then repeated RepeatLines more times.
     SpeechLines = {

@@ -86,7 +86,10 @@ end
 -- scared reaction: cower + scream / plead for help
 local function scarePassenger(ped)
 	if not DoesEntityExist(ped) then return end
-	TaskStartScenarioInPlace(ped, joaat(Config.Rob.ScareScenario), -1, true, false, false, false)
+	-- optional cower pose: uncomment ScareScenario in Config.Rob to use it (passengers stand up for it)
+	if Config.Rob.ScareScenario then
+		TaskStartScenarioInPlace(ped, joaat(Config.Rob.ScareScenario), -1, true, false, false, false)
+	end
 	sayLine(ped)
 	-- keep begging a couple of times while the ped is cowering
 	CreateThread(function ()
