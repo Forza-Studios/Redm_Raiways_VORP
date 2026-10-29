@@ -43,9 +43,9 @@ Config.EastTrainDirection = false    -- set to true to have it go the other way
 Config.WestTrainDirection = false
 
 Config.UseTrainBlips = true
-Config.TrainBlipNameEast = "BGS East Line"
-Config.TrainBlipNameWest = "BGS West Line"
-Config.TrainBlipNameTram = "BGS Tram"
+Config.TrainBlipNameEast = "East Line"
+Config.TrainBlipNameWest = "West Line"
+Config.TrainBlipNameTram = "Tram"
 
 Config.EastTrain = 0xCD2C7CA1   -- List can be found at https://alloc8or.re/rdr3/doc/enums/eTrainConfig.txt
 Config.WestTrain = 0xCD2C7CA1

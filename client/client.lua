@@ -463,13 +463,18 @@ RegisterNetEvent("BGS_Trains:client:CanSpawnTrain", function(canSpawnTrains)
 end)
 
 -- Get net indexes for train values from server, convert and store
+-- only touch net ids that already exist on this client (avoids 'no object by ID' warnings)
+local function NetReady(trainNet, driverNet)
+	return trainNet ~= nil and driverNet ~= nil and NetworkDoesNetworkIdExist(trainNet) and NetworkDoesNetworkIdExist(driverNet)
+end
+
 RegisterNetEvent("BGS_Trains:client:GetTrainsFromServer", function (eastNet, westNet, tramNet, eastConductorNet, westConductorNet, tramConductorNet)
 	local spawnedWest = true
 	local spawnedEast = true
 	local spawnedTram = true
 	if Config.UseEastTrain then
 		spawnedEast = false
-		if eastNet then
+		if NetReady(eastNet, eastConductorNet) then
 			eastTrain = NetworkGetEntityFromNetworkId(eastNet)
 			eastConductor = NetworkGetEntityFromNetworkId(eastConductorNet)
 			ProtectTrainDriver(eastConductor)
@@ -480,7 +485,7 @@ RegisterNetEvent("BGS_Trains:client:GetTrainsFromServer", function (eastNet, wes
 	end
 	if Config.UseWestTrain then
 		spawnedWest = false
-		if westNet then
+		if NetReady(westNet, westConductorNet) then
 			westTrain = NetworkGetEntityFromNetworkId(westNet)
 			westConductor = NetworkGetEntityFromNetworkId(westConductorNet)
 			ProtectTrainDriver(westConductor)
@@ -491,7 +496,7 @@ RegisterNetEvent("BGS_Trains:client:GetTrainsFromServer", function (eastNet, wes
 	end
 	if Config.UseTram then
 		spawnedTram = false
-		if tramNet then
+		if NetReady(tramNet, tramConductorNet) then
 			tram = NetworkGetEntityFromNetworkId(tramNet)
 			tramConductor = NetworkGetEntityFromNetworkId(tramConductorNet)
 			FreezeEntityPosition(tramConductor, true)
