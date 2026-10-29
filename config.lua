@@ -51,8 +51,12 @@ Config.TrainBlipNameEast = "East Line"
 Config.TrainBlipNameWest = "West Line"
 Config.TrainBlipNameTram = "Tram"
 
-Config.EastTrain = 0x8864D73A   -- passenger train that spawns with NPC passengers (s&e/central pass 9); List can be found at https://alloc8or.re/rdr3/doc/enums/eTrainConfig.txt
-Config.WestTrain = 0x4C9CCB22   -- passenger train that spawns with NPC passengers (central pass 9)
+-- Train composition and passenger count are baked into the train config hash (cannot be edited from Lua).
+-- Passenger-only configs (labels from shamey-choochoo's train list), longest first:
+--   0x998A0CBC s&e pass 13 | 0xCA19C62A cen pass 12 | 0xD8CF6395 cen pass 11 | 0x8864D73A s&e/cen pass 9 | 0x4C9CCB22 cen pass 9
+-- 0x8864D73A and 0x4C9CCB22 are the two confirmed (forum + in-game) to spawn with NPC passengers.
+Config.EastTrain = 0x998A0CBC   -- long passenger-only train (13 cars)
+Config.WestTrain = 0xCA19C62A   -- long passenger-only train (12 cars)
 Config.Trolley = 0xBF69518F     --trolley_config = 0xBF69518F
                                 --trolley_config2 = 0x09B679D6
 
