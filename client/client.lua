@@ -346,12 +346,33 @@ AddEventHandler("onResourceStop", function (resourceName)
 	end
 end)
 
+-- Train passenger ped models (names from the knowledge brain: ai/RELATIONSHIP). Loaded before the
+-- train spawns so the game can fill the carriages with passengers.
+local passengerModels = {
+	'A_M_M_LOWERTRAINPASSENGERS_01', 'A_M_M_MIDDLETRAINPASSENGERS_01', 'A_M_M_UPPERTRAINPASSENGERS_01',
+	'A_F_M_LOWERTRAINPASSENGERS_01', 'A_F_M_MIDDLETRAINPASSENGERS_01', 'A_F_M_UPPERTRAINPASSENGERS_01',
+}
+
+local function LoadPassengerModels()
+	if not Config.TrainPassengers then return end
+	for _, name in ipairs(passengerModels) do
+		local hash = joaat(name)
+		local tries = 0
+		RequestModel(hash)
+		while not HasModelLoaded(hash) and tries < 50 do
+			Wait(100)
+			tries = tries + 1
+		end
+	end
+end
+
 -- Create train and tram vehicles, network and store server side
 local function TrainCreateVehicle(trainModel, location, trainArea, direction)
 
 	CreateThread(function ()
 		while true do
 			Wait(1000)
+			LoadPassengerModels()
 			local trainWagons = N_0x635423d55ca84fc8(trainModel)
 
 			for i = 0, trainWagons - 1 do
